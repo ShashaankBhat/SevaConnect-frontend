@@ -6,7 +6,9 @@ interface NGO {
   email: string;
   contact: string;
   address: string;
+  category: string;
   description: string;
+  documents?: string[];
 }
 
 interface AuthContextType {

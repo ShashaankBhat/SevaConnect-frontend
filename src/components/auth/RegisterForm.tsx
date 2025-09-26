@@ -4,9 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, Heart } from 'lucide-react';
+import { Loader2, Heart, Upload } from 'lucide-react';
 
 interface RegisterFormProps {
   onToggleMode: () => void;
@@ -20,8 +21,10 @@ export function RegisterForm({ onToggleMode }: RegisterFormProps) {
     confirmPassword: '',
     contact: '',
     address: '',
+    category: '',
     description: '',
   });
+  const [documents, setDocuments] = useState<File[]>([]);
   const [error, setError] = useState('');
   const { register, isLoading } = useAuth();
 
@@ -30,7 +33,7 @@ export function RegisterForm({ onToggleMode }: RegisterFormProps) {
     setError('');
 
     // Validation
-    if (!formData.name || !formData.email || !formData.password || !formData.contact || !formData.address) {
+    if (!formData.name || !formData.email || !formData.password || !formData.contact || !formData.address || !formData.category) {
       setError('Please fill in all required fields');
       return;
     }
@@ -46,7 +49,7 @@ export function RegisterForm({ onToggleMode }: RegisterFormProps) {
     }
 
     const { confirmPassword, ...registerData } = formData;
-    const success = await register(registerData);
+    const success = await register({ ...registerData, documents: documents.map(f => f.name) });
     
     if (!success) {
       setError('Email already exists. Please use a different email.');
@@ -58,6 +61,16 @@ export function RegisterForm({ onToggleMode }: RegisterFormProps) {
       ...prev,
       [e.target.name]: e.target.value
     }));
+  };
+
+  const handleSelectChange = (value: string) => {
+    setFormData(prev => ({ ...prev, category: value }));
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setDocuments(Array.from(e.target.files));
+    }
   };
 
   return (
@@ -161,6 +174,50 @@ export function RegisterForm({ onToggleMode }: RegisterFormProps) {
                   placeholder="Your NGO's address"
                   disabled={isLoading}
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="category">Category *</Label>
+                <Select onValueChange={handleSelectChange} disabled={isLoading}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select your NGO's primary focus" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Food">Food & Nutrition</SelectItem>
+                    <SelectItem value="Clothes">Clothes & Textiles</SelectItem>
+                    <SelectItem value="Medicine">Medicine & Healthcare</SelectItem>
+                    <SelectItem value="Education">Education</SelectItem>
+                    <SelectItem value="Environment">Environment</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="documents">Verification Documents</Label>
+                <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
+                  <Upload className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
+                  <Input
+                    id="documents"
+                    type="file"
+                    multiple
+                    accept=".pdf,.doc,.docx,.jpg,.png"
+                    onChange={handleFileChange}
+                    className="hidden"
+                    disabled={isLoading}
+                  />
+                  <Label 
+                    htmlFor="documents" 
+                    className="cursor-pointer text-sm text-muted-foreground hover:text-foreground"
+                  >
+                    Click to upload registration documents, certificates, or ID proof
+                  </Label>
+                  {documents.length > 0 && (
+                    <div className="mt-2 text-sm text-foreground">
+                      {documents.length} file(s) selected
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="space-y-2">

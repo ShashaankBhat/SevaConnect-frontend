@@ -44,6 +44,9 @@ interface AppContextType {
   addNeed: (need: Omit<Need, 'id' | 'createdAt'>) => void;
   updateNeed: (id: string, need: Partial<Need>) => void;
   deleteNeed: (id: string) => void;
+  addInventoryItem: (item: Omit<InventoryItem, 'id' | 'addedAt'>) => void;
+  updateInventoryItem: (id: string, item: Partial<InventoryItem>) => void;
+  deleteInventoryItem: (id: string) => void;
   confirmDonation: (donationId: string) => void;
   markAlertAsRead: (alertId: string) => void;
   getUnreadAlerts: () => Alert[];
@@ -83,6 +86,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         quantity: 25,
         status: 'Received',
         donatedAt: new Date(Date.now() - 172800000).toISOString(),
+      },
+      {
+        id: '4',
+        donorName: 'City Hospital',
+        item: 'First Aid Kits',
+        quantity: 15,
+        status: 'Pending',
+        donatedAt: new Date(Date.now() - 43200000).toISOString(),
+      },
+      {
+        id: '5',
+        donorName: 'School District',
+        item: 'Books & Stationery',
+        quantity: 200,
+        status: 'Received',
+        donatedAt: new Date(Date.now() - 259200000).toISOString(),
       },
     ];
 
@@ -178,6 +197,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setNeeds(prev => prev.filter(need => need.id !== id));
   };
 
+  const addInventoryItem = (item: Omit<InventoryItem, 'id' | 'addedAt'>) => {
+    const newItem: InventoryItem = {
+      ...item,
+      id: Date.now().toString(),
+      addedAt: new Date().toISOString(),
+    };
+    setInventory(prev => [...prev, newItem]);
+  };
+
+  const updateInventoryItem = (id: string, updatedItem: Partial<InventoryItem>) => {
+    setInventory(prev => prev.map(item => 
+      item.id === id ? { ...item, ...updatedItem } : item
+    ));
+  };
+
+  const deleteInventoryItem = (id: string) => {
+    setInventory(prev => prev.filter(item => item.id !== id));
+  };
+
   const confirmDonation = (donationId: string) => {
     setDonations(prev => prev.map(donation => {
       if (donation.id === donationId && donation.status === 'Pending') {
@@ -216,6 +254,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       addNeed,
       updateNeed,
       deleteNeed,
+      addInventoryItem,
+      updateInventoryItem,
+      deleteInventoryItem,
       confirmDonation,
       markAlertAsRead,
       getUnreadAlerts,

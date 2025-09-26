@@ -1,11 +1,16 @@
+import { useState } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Warehouse, AlertTriangle, Calendar, Package } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { AddInventoryForm } from '@/components/inventory/AddInventoryForm';
+import { Warehouse, AlertTriangle, Calendar, Package, Plus, Edit, Trash2 } from 'lucide-react';
 
 export default function InventoryPage() {
-  const { inventory } = useApp();
+  const { inventory, deleteInventoryItem } = useApp();
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [editItem, setEditItem] = useState(null);
 
   const isLowStock = (quantity: number) => quantity < 5;
   
@@ -25,11 +30,33 @@ export default function InventoryPage() {
   const lowStockItems = inventory.filter(item => isLowStock(item.quantity));
   const expiringSoonItems = inventory.filter(item => isExpiringSoon(item.expiryDate));
 
+  const handleEdit = (item: any) => {
+    setEditItem(item);
+    setShowAddForm(true);
+  };
+
+  const handleDelete = (itemId: string) => {
+    if (confirm('Are you sure you want to delete this item?')) {
+      deleteInventoryItem(itemId);
+    }
+  };
+
+  const handleFormClose = () => {
+    setShowAddForm(false);
+    setEditItem(null);
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">Manage Inventory</h1>
-        <p className="text-muted-foreground">Monitor your organization's inventory and stock levels</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Manage Inventory</h1>
+          <p className="text-muted-foreground">Monitor your organization's inventory and stock levels</p>
+        </div>
+        <Button onClick={() => setShowAddForm(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Add Item
+        </Button>
       </div>
 
       <div className="grid gap-6 md:grid-cols-4">
@@ -153,6 +180,7 @@ export default function InventoryPage() {
                   <TableHead>Status</TableHead>
                   <TableHead>Expiry Date</TableHead>
                   <TableHead>Added</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -202,6 +230,12 @@ export default function InventoryPage() {
           )}
         </CardContent>
       </Card>
+
+      <AddInventoryForm 
+        open={showAddForm} 
+        onOpenChange={handleFormClose}
+        editItem={editItem}
+      />
     </div>
   );
 }
