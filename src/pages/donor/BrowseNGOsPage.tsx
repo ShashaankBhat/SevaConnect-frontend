@@ -88,7 +88,10 @@ export function BrowseNGOsPage() {
         {/* Map Section */}
         <div className="space-y-4">
           <h2 className="text-xl font-semibold">NGO Locations</h2>
-          <LoadScript googleMapsApiKey={process.env.REACT_APP_GOOGLE_MAPS_API_KEY || 'demo-key'}>
+    <LoadScript
+  googleMapsApiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'demo-key'}
+>
+
             <GoogleMap
               mapContainerStyle={containerStyle}
               center={mapCenter}

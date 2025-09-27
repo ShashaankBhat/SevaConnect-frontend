@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AppProvider } from "@/contexts/AppContext";
 import { DonorAuthProvider, useDonorAuth } from "@/contexts/DonorAuthContext";
 import { DonorAppProvider } from "@/contexts/DonorAppContext";
+import LandingPage from "./pages/LandingPage";
 
 // NGO Pages
 import AuthPage from "./pages/AuthPage";
@@ -81,23 +82,9 @@ const App = () => (
             <DonorAppProvider>
               <BrowserRouter>
                 <Routes>
-                  {/* Root redirect - show selection page */}
-                  <Route path="/" element={
-                    <div className="min-h-screen bg-gradient-to-br from-primary/10 to-secondary/10 flex items-center justify-center p-4">
-                      <div className="text-center space-y-6">
-                        <h1 className="text-4xl font-bold">Welcome to SevaConnect</h1>
-                        <p className="text-xl text-muted-foreground">Choose your portal</p>
-                        <div className="flex gap-4 justify-center">
-                          <a href="/auth" className="bg-primary text-primary-foreground px-6 py-3 rounded-lg hover:bg-primary/90 transition-colors">
-                            NGO Portal
-                          </a>
-                          <a href="/donor/auth" className="bg-secondary text-secondary-foreground px-6 py-3 rounded-lg hover:bg-secondary/90 transition-colors">
-                            Donor Portal
-                          </a>
-                        </div>
-                      </div>
-                    </div>
-                  } />
+                
+                <Route path="/" element={<LandingPage />} />
+                 
                   
                   {/* NGO Routes */}
                   <Route 
