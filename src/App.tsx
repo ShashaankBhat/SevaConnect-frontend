@@ -7,6 +7,8 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AppProvider } from "@/contexts/AppContext";
 import { DonorAuthProvider, useDonorAuth } from "@/contexts/DonorAuthContext";
 import { DonorAppProvider } from "@/contexts/DonorAppContext";
+import { AdminAuthProvider, useAdminAuth } from "@/contexts/AdminAuthContext";
+import { AdminAppProvider } from "@/contexts/AdminAppContext";
 import LandingPage from "./pages/LandingPage";
 
 // NGO Pages
@@ -23,9 +25,19 @@ import { MyDonationsPage } from "@/pages/donor/MyDonationsPage";
 import { DonorProfilePage } from "@/pages/donor/DonorProfilePage";
 import { BookVolunteerPage } from "@/pages/donor/BookVolunteerPage";
 
+// Admin Pages
+import AdminAuthPage from "@/pages/admin/AdminAuthPage";
+import AdminDashboardPage from "@/pages/admin/AdminDashboardPage";
+import VerifyNGOsPage from "@/pages/admin/VerifyNGOsPage";
+import AdminDonationsPage from "@/pages/admin/AdminDonationsPage";
+import AdminInventoryPage from "@/pages/admin/AdminInventoryPage";
+import AdminAlertsPage from "@/pages/admin/AdminAlertsPage";
+import AdminAnalyticsPage from "@/pages/admin/AdminAnalyticsPage";
+
 // Layouts
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { DonorDashboardLayout } from "@/components/donor/layout/DonorDashboardLayout";
+import AdminDashboardLayout from "@/components/admin/AdminDashboardLayout";
 
 import NotFound from "./pages/NotFound";
 
@@ -71,6 +83,26 @@ function DonorPublicRoute({ children }: { children: React.ReactNode }) {
   return !donor ? <>{children}</> : <Navigate to="/donor/dashboard/browse" replace />;
 }
 
+function AdminProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { admin, isLoading } = useAdminAuth();
+
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
+
+  return admin ? <>{children}</> : <Navigate to="/admin/auth" replace />;
+}
+
+function AdminPublicRoute({ children }: { children: React.ReactNode }) {
+  const { admin, isLoading } = useAdminAuth();
+
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
+
+  return !admin ? <>{children}</> : <Navigate to="/admin/dashboard" replace />;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -80,63 +112,93 @@ const App = () => (
         <AppProvider>
           <DonorAuthProvider>
             <DonorAppProvider>
-              <BrowserRouter>
-                <Routes>
-                
-                <Route path="/" element={<LandingPage />} />
-                 
-                  
-                  {/* NGO Routes */}
-                  <Route 
-                    path="/auth" 
-                    element={
-                      <PublicRoute>
-                        <AuthPage />
-                      </PublicRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/dashboard" 
-                    element={
-                      <ProtectedRoute>
-                        <DashboardLayout />
-                      </ProtectedRoute>
-                    }
-                  >
-                    <Route index element={<Navigate to="/dashboard/needs" replace />} />
-                    <Route path="needs" element={<NeedsPage />} />
-                    <Route path="donations" element={<DonationsPage />} />
-                    <Route path="inventory" element={<InventoryPage />} />
-                    <Route path="alerts" element={<AlertsPage />} />
-                  </Route>
-                  
-                  {/* Donor Routes */}
-                  <Route 
-                    path="/donor/auth" 
-                    element={
-                      <DonorPublicRoute>
-                        <DonorAuthPage />
-                      </DonorPublicRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/donor/dashboard" 
-                    element={
-                      <DonorProtectedRoute>
-                        <DonorDashboardLayout />
-                      </DonorProtectedRoute>
-                    }
-                  >
-                    <Route index element={<Navigate to="/donor/dashboard/browse" replace />} />
-                    <Route path="browse" element={<BrowseNGOsPage />} />
-                    <Route path="donations" element={<MyDonationsPage />} />
-                    <Route path="profile" element={<DonorProfilePage />} />
-                    <Route path="volunteer" element={<BookVolunteerPage />} />
-                  </Route>
-                  
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </BrowserRouter>
+              <AdminAuthProvider>
+                <AdminAppProvider>
+                  <BrowserRouter>
+                    <Routes>
+                    
+                    <Route path="/" element={<LandingPage />} />
+                     
+                      
+                      {/* NGO Routes */}
+                      <Route 
+                        path="/auth" 
+                        element={
+                          <PublicRoute>
+                            <AuthPage />
+                          </PublicRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/dashboard" 
+                        element={
+                          <ProtectedRoute>
+                            <DashboardLayout />
+                          </ProtectedRoute>
+                        }
+                      >
+                        <Route index element={<Navigate to="/dashboard/needs" replace />} />
+                        <Route path="needs" element={<NeedsPage />} />
+                        <Route path="donations" element={<DonationsPage />} />
+                        <Route path="inventory" element={<InventoryPage />} />
+                        <Route path="alerts" element={<AlertsPage />} />
+                      </Route>
+                      
+                      {/* Donor Routes */}
+                      <Route 
+                        path="/donor/auth" 
+                        element={
+                          <DonorPublicRoute>
+                            <DonorAuthPage />
+                          </DonorPublicRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/donor/dashboard" 
+                        element={
+                          <DonorProtectedRoute>
+                            <DonorDashboardLayout />
+                          </DonorProtectedRoute>
+                        }
+                      >
+                        <Route index element={<Navigate to="/donor/dashboard/browse" replace />} />
+                        <Route path="browse" element={<BrowseNGOsPage />} />
+                        <Route path="donations" element={<MyDonationsPage />} />
+                        <Route path="profile" element={<DonorProfilePage />} />
+                        <Route path="volunteer" element={<BookVolunteerPage />} />
+                      </Route>
+                      
+                      {/* Admin Routes */}
+                      <Route 
+                        path="/admin/auth" 
+                        element={
+                          <AdminPublicRoute>
+                            <AdminAuthPage />
+                          </AdminPublicRoute>
+                        } 
+                      />
+                      <Route 
+                        path="/admin" 
+                        element={
+                          <AdminProtectedRoute>
+                            <AdminDashboardLayout />
+                          </AdminProtectedRoute>
+                        }
+                      >
+                        <Route index element={<Navigate to="/admin/dashboard" replace />} />
+                        <Route path="dashboard" element={<AdminDashboardPage />} />
+                        <Route path="verify-ngos" element={<VerifyNGOsPage />} />
+                        <Route path="donations" element={<AdminDonationsPage />} />
+                        <Route path="inventory" element={<AdminInventoryPage />} />
+                        <Route path="alerts" element={<AdminAlertsPage />} />
+                        <Route path="analytics" element={<AdminAnalyticsPage />} />
+                      </Route>
+                      
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </BrowserRouter>
+                </AdminAppProvider>
+              </AdminAuthProvider>
             </DonorAppProvider>
           </DonorAuthProvider>
         </AppProvider>

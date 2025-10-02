@@ -16,6 +16,7 @@ export default function LandingPage() {
             <li><a href="#whatwedo" className="hover:text-blue-600">What We Do</a></li>
             <li><button onClick={() => navigate("/auth")} className="text-blue-600">NGO Register</button></li>
             <li><button onClick={() => navigate("/donor/auth")} className="text-green-600">Donor Register</button></li>
+            <li><button onClick={() => navigate("/admin/auth")} className="text-purple-600">Admin Login</button></li>
           </ul>
         </div>
       </nav>
@@ -47,6 +48,12 @@ export default function LandingPage() {
               className="bg-yellow-400 text-black px-6 py-3 rounded-lg font-semibold shadow hover:bg-yellow-300 transition"
             >
               Register as NGO
+            </button>
+            <button
+              onClick={() => navigate("/admin/auth")}
+              className="bg-purple-500 text-white px-6 py-3 rounded-lg font-semibold shadow hover:bg-purple-600 transition"
+            >
+              Admin Panel
             </button>
             <button
               onClick={() => document.getElementById("nearby")?.scrollIntoView({ behavior: "smooth" })}
