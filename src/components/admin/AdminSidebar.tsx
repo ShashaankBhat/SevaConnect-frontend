@@ -2,10 +2,6 @@ import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Users, 
-  Gift, 
-  Package, 
-  AlertTriangle,
-  BarChart3,
   LogOut,
   Shield
 } from 'lucide-react';
@@ -20,10 +16,6 @@ export default function AdminSidebar() {
     { path: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/admin/verify-ngos', icon: Shield, label: 'Verify NGOs' },
     { path: '/admin/donors', icon: Users, label: 'Donors' },
-    { path: '/admin/donations', icon: Gift, label: 'Donations' },
-    { path: '/admin/inventory', icon: Package, label: 'Inventory' },
-    { path: '/admin/alerts', icon: AlertTriangle, label: 'Alerts' },
-    { path: '/admin/analytics', icon: BarChart3, label: 'Analytics' },
   ];
 
   return (

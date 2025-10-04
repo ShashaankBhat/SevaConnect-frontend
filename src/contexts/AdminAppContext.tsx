@@ -16,18 +16,7 @@ interface NGORegistration {
 interface AdminAppContextType {
   ngoRegistrations: NGORegistration[];
   verifyNGO: (id: string) => void;
-  rejectNGO: (id: string) => void;
-  getAllDonations: () => any[];
-  getAllInventory: () => any[];
-  getAllNeeds: () => any[];
-  getStats: () => {
-    totalNGOs: number;
-    pendingVerifications: number;
-    totalDonations: number;
-    totalInventoryItems: number;
-    lowStockItems: number;
-    expiringItems: number;
-  };
+  rejectNGO: (id: string, reason?: string) => void;
 }
 
 const AdminAppContext = createContext<AdminAppContextType | undefined>(undefined);
@@ -58,63 +47,33 @@ export function AdminAppProvider({ children }: { children: React.ReactNode }) {
     );
   };
 
-  const rejectNGO = (id: string) => {
+  const rejectNGO = (id: string, reason?: string) => {
     const ngos = JSON.parse(localStorage.getItem('sevaconnect_ngos') || '[]');
     const updatedNgos = ngos.map((ngo: any) => 
-      ngo.id === id ? { ...ngo, status: 'Rejected' } : ngo
+      ngo.id === id ? { ...ngo, status: 'Rejected', rejectionReason: reason } : ngo
     );
     localStorage.setItem('sevaconnect_ngos', JSON.stringify(updatedNgos));
     
     setNgoRegistrations(prev => 
-      prev.map(ngo => ngo.id === id ? { ...ngo, status: 'Rejected' } : ngo)
+      prev.map(ngo => ngo.id === id ? { ...ngo, status: 'Rejected', rejectionReason: reason } : ngo)
     );
-  };
-
-  const getAllDonations = () => {
-    return JSON.parse(localStorage.getItem('sevaconnect_donations') || '[]');
-  };
-
-  const getAllInventory = () => {
-    return JSON.parse(localStorage.getItem('sevaconnect_inventory') || '[]');
-  };
-
-  const getAllNeeds = () => {
-    return JSON.parse(localStorage.getItem('sevaconnect_needs') || '[]');
-  };
-
-  const getStats = () => {
-    const ngos = JSON.parse(localStorage.getItem('sevaconnect_ngos') || '[]');
-    const donations = getAllDonations();
-    const inventory = getAllInventory();
     
-    const lowStockItems = inventory.filter((item: any) => item.quantity < 5).length;
-    const expiringItems = inventory.filter((item: any) => {
-      if (!item.expiryDate) return false;
-      const daysUntilExpiry = Math.ceil(
-        (new Date(item.expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-      );
-      return daysUntilExpiry <= 7 && daysUntilExpiry >= 0;
-    }).length;
-
-    return {
-      totalNGOs: ngos.length,
-      pendingVerifications: ngos.filter((ngo: any) => ngo.status === 'Pending').length,
-      totalDonations: donations.length,
-      totalInventoryItems: inventory.reduce((sum: number, item: any) => sum + item.quantity, 0),
-      lowStockItems,
-      expiringItems
-    };
+    // Update logged in user if they're the one being rejected
+    const currentUser = localStorage.getItem('sevaconnect_user');
+    if (currentUser) {
+      const user = JSON.parse(currentUser);
+      if (user.id === id) {
+        const updatedUser = { ...user, status: 'Rejected', rejectionReason: reason };
+        localStorage.setItem('sevaconnect_user', JSON.stringify(updatedUser));
+      }
+    }
   };
 
   return (
     <AdminAppContext.Provider value={{
       ngoRegistrations,
       verifyNGO,
-      rejectNGO,
-      getAllDonations,
-      getAllInventory,
-      getAllNeeds,
-      getStats
+      rejectNGO
     }}>
       {children}
     </AdminAppContext.Provider>
