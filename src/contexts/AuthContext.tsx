@@ -9,12 +9,14 @@ interface NGO {
   category: string;
   description: string;
   documents?: string[];
+  status: 'Pending' | 'Verified' | 'Rejected';
+  rejectionReason?: string;
 }
 
 interface AuthContextType {
   user: NGO | null;
   login: (email: string, password: string) => Promise<boolean>;
-  register: (ngoData: Omit<NGO, 'id'> & { password: string }) => Promise<boolean>;
+  register: (ngoData: Omit<NGO, 'id' | 'status' | 'rejectionReason'> & { password: string }) => Promise<boolean>;
   logout: () => void;
   isLoading: boolean;
 }
@@ -56,7 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return false;
   };
 
-  const register = async (ngoData: Omit<NGO, 'id'> & { password: string }): Promise<boolean> => {
+  const register = async (ngoData: Omit<NGO, 'id' | 'status' | 'rejectionReason'> & { password: string }): Promise<boolean> => {
     setIsLoading(true);
     
     // Simulate API call
@@ -73,6 +75,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const newNGO = {
       ...ngoData,
       id: Date.now().toString(),
+      status: 'Pending' as const,
+      submittedAt: new Date().toISOString(),
     };
     
     registeredNGOs.push(newNGO);

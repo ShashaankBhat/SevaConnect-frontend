@@ -19,6 +19,7 @@ export default function AdminSidebar() {
   const menuItems = [
     { path: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/admin/verify-ngos', icon: Shield, label: 'Verify NGOs' },
+    { path: '/admin/donors', icon: Users, label: 'Donors' },
     { path: '/admin/donations', icon: Gift, label: 'Donations' },
     { path: '/admin/inventory', icon: Package, label: 'Inventory' },
     { path: '/admin/alerts', icon: AlertTriangle, label: 'Alerts' },
