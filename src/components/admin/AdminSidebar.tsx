@@ -3,7 +3,9 @@ import {
   LayoutDashboard, 
   Users, 
   LogOut,
-  Shield
+  Shield,
+  Bell,
+  BarChart
 } from 'lucide-react';
 import { useAdminAuth } from '@/contexts/AdminAuthContext';
 import { Button } from '@/components/ui/button';
@@ -16,6 +18,9 @@ export default function AdminSidebar() {
     { path: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/admin/verify-ngos', icon: Shield, label: 'Verify NGOs' },
     { path: '/admin/donors', icon: Users, label: 'Donors' },
+    { path: '/admin/volunteers', icon: Users, label: 'Volunteer Requests' },
+    { path: '/admin/notifications', icon: Bell, label: 'Notifications' },
+    { path: '/admin/reports', icon: BarChart, label: 'Reports' },
   ];
 
   return (

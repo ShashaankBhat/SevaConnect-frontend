@@ -30,6 +30,9 @@ import AdminAuthPage from "@/pages/admin/AdminAuthPage";
 import AdminDashboardPage from "@/pages/admin/AdminDashboardPage";
 import VerifyNGOsPage from "@/pages/admin/VerifyNGOsPage";
 import AdminDonorsPage from "@/pages/admin/AdminDonorsPage";
+import VolunteerRequestsPage from "@/pages/admin/VolunteerRequestsPage";
+import NotificationsPage from "@/pages/admin/NotificationsPage";
+import ReportsPage from "@/pages/admin/ReportsPage";
 
 // Layouts
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -186,6 +189,9 @@ const App = () => (
                         <Route path="dashboard" element={<AdminDashboardPage />} />
                         <Route path="verify-ngos" element={<VerifyNGOsPage />} />
                         <Route path="donors" element={<AdminDonorsPage />} />
+                        <Route path="volunteers" element={<VolunteerRequestsPage />} />
+                        <Route path="notifications" element={<NotificationsPage />} />
+                        <Route path="reports" element={<ReportsPage />} />
                       </Route>
                       
                       <Route path="*" element={<NotFound />} />
