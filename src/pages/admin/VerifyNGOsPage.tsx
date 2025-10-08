@@ -69,8 +69,8 @@ export default function VerifyNGOsPage() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'Verified':
-        return <Badge className="bg-success text-success-foreground">Verified</Badge>;
+      case 'Approved':
+        return <Badge className="bg-success text-success-foreground">Approved</Badge>;
       case 'Rejected':
         return <Badge variant="destructive">Rejected</Badge>;
       default:
@@ -111,12 +111,12 @@ export default function VerifyNGOsPage() {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Verified</CardTitle>
+              <CardTitle className="text-sm font-medium">Approved</CardTitle>
               <CheckCircle className="h-4 w-4 text-success" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-success">
-                {ngoRegistrations.filter(ngo => ngo.status === 'Verified').length}
+                {ngoRegistrations.filter(ngo => ngo.status === 'Approved').length}
               </div>
             </CardContent>
           </Card>
@@ -146,7 +146,7 @@ export default function VerifyNGOsPage() {
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="Pending">Pending</SelectItem>
-                  <SelectItem value="Verified">Verified</SelectItem>
+                  <SelectItem value="Approved">Approved</SelectItem>
                   <SelectItem value="Rejected">Rejected</SelectItem>
                 </SelectContent>
               </Select>

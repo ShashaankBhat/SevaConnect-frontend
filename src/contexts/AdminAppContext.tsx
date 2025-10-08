@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface NGORegistration {
   id: string;
@@ -8,9 +9,10 @@ interface NGORegistration {
   address: string;
   category: string;
   description: string;
-  documents?: string[];
-  status: 'Pending' | 'Verified' | 'Rejected';
+  documents?: any;
+  status: 'Pending' | 'Approved' | 'Rejected';
   submittedAt: string;
+  rejectionReason?: string;
 }
 
 interface AdminAppContextType {
@@ -25,48 +27,92 @@ export function AdminAppProvider({ children }: { children: React.ReactNode }) {
   const [ngoRegistrations, setNgoRegistrations] = useState<NGORegistration[]>([]);
 
   useEffect(() => {
-    // Load NGO registrations
-    const ngos = JSON.parse(localStorage.getItem('sevaconnect_ngos') || '[]');
-    const registrations = ngos.map((ngo: any) => ({
-      ...ngo,
-      status: ngo.status || 'Pending',
-      submittedAt: ngo.submittedAt || new Date().toISOString()
-    }));
-    setNgoRegistrations(registrations);
+    // Fetch NGO registrations from Supabase
+    const fetchNGOs = async () => {
+      const { data, error } = await (supabase as any)
+        .from('ngos')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching NGO registrations:', error);
+        return;
+      }
+
+      if (data) {
+        const registrations: NGORegistration[] = data.map((ngo: any) => ({
+          id: ngo.id,
+          name: ngo.name,
+          email: ngo.email,
+          contact: ngo.contact,
+          address: ngo.address,
+          category: ngo.category,
+          description: ngo.description,
+          documents: ngo.documents,
+          status: ngo.status,
+          submittedAt: ngo.created_at,
+          rejectionReason: ngo.rejection_reason
+        }));
+        setNgoRegistrations(registrations);
+      }
+    };
+
+    fetchNGOs();
+
+    // Subscribe to real-time changes
+    const channel = (supabase as any)
+      .channel('ngos-admin-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'ngos'
+        },
+        () => {
+          fetchNGOs(); // Refetch when NGOs change
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
-  const verifyNGO = (id: string) => {
-    const ngos = JSON.parse(localStorage.getItem('sevaconnect_ngos') || '[]');
-    const updatedNgos = ngos.map((ngo: any) => 
-      ngo.id === id ? { ...ngo, status: 'Verified' } : ngo
-    );
-    localStorage.setItem('sevaconnect_ngos', JSON.stringify(updatedNgos));
+  const verifyNGO = async (id: string) => {
+    const { error } = await (supabase as any)
+      .from('ngos')
+      .update({ status: 'Approved' })
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error verifying NGO:', error);
+      return;
+    }
     
     setNgoRegistrations(prev => 
-      prev.map(ngo => ngo.id === id ? { ...ngo, status: 'Verified' } : ngo)
+      prev.map(ngo => ngo.id === id ? { ...ngo, status: 'Approved' } : ngo)
     );
   };
 
-  const rejectNGO = (id: string, reason?: string) => {
-    const ngos = JSON.parse(localStorage.getItem('sevaconnect_ngos') || '[]');
-    const updatedNgos = ngos.map((ngo: any) => 
-      ngo.id === id ? { ...ngo, status: 'Rejected', rejectionReason: reason } : ngo
-    );
-    localStorage.setItem('sevaconnect_ngos', JSON.stringify(updatedNgos));
+  const rejectNGO = async (id: string, reason?: string) => {
+    const { error } = await (supabase as any)
+      .from('ngos')
+      .update({ 
+        status: 'Rejected',
+        rejection_reason: reason 
+      })
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error rejecting NGO:', error);
+      return;
+    }
     
     setNgoRegistrations(prev => 
       prev.map(ngo => ngo.id === id ? { ...ngo, status: 'Rejected', rejectionReason: reason } : ngo)
     );
-    
-    // Update logged in user if they're the one being rejected
-    const currentUser = localStorage.getItem('sevaconnect_user');
-    if (currentUser) {
-      const user = JSON.parse(currentUser);
-      if (user.id === id) {
-        const updatedUser = { ...user, status: 'Rejected', rejectionReason: reason };
-        localStorage.setItem('sevaconnect_user', JSON.stringify(updatedUser));
-      }
-    }
   };
 
   return (

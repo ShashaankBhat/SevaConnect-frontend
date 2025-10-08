@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface NGO {
   id: string;
@@ -50,67 +51,8 @@ interface DonorAppContextType {
 
 const DonorAppContext = createContext<DonorAppContextType | undefined>(undefined);
 
-// Mock NGO data with coordinates
-const mockNGOs: NGO[] = [
-  {
-    id: '1',
-    name: 'Food for All Foundation',
-    address: '123 Charity Lane, Mumbai, Maharashtra',
-    lat: 19.0760,
-    lng: 72.8777,
-    needs: ['Rice', 'Dal', 'Cooking Oil', 'Vegetables'],
-    contact: '+91 98765 43210',
-    category: 'Food',
-    status: 'Approved'
-  },
-  {
-    id: '2',
-    name: 'Cloth Care Society',
-    address: '456 Help Street, Delhi, India',
-    lat: 28.6139,
-    lng: 77.2090,
-    needs: ['Winter Clothes', 'Children Clothes', 'Blankets'],
-    contact: '+91 87654 32109',
-    category: 'Clothes',
-    status: 'Approved'
-  },
-  {
-    id: '3',
-    name: 'Health First NGO',
-    address: '789 Medical Road, Bangalore, Karnataka',
-    lat: 12.9716,
-    lng: 77.5946,
-    needs: ['Medicines', 'First Aid Supplies', 'Medical Equipment'],
-    contact: '+91 76543 21098',
-    category: 'Medicine',
-    status: 'Approved'
-  },
-  {
-    id: '4',
-    name: 'Education for Tomorrow',
-    address: '321 Learning Avenue, Pune, Maharashtra',
-    lat: 18.5204,
-    lng: 73.8567,
-    needs: ['Books', 'Stationery', 'Computers', 'Notebooks'],
-    contact: '+91 65432 10987',
-    category: 'Education',
-    status: 'Approved'
-  },
-  {
-    id: '5',
-    name: 'Animal Welfare Trust',
-    address: '654 Pet Care Lane, Chennai, Tamil Nadu',
-    lat: 13.0827,
-    lng: 80.2707,
-    needs: ['Pet Food', 'Veterinary Supplies', 'Shelter Materials'],
-    contact: '+91 54321 09876',
-    category: 'Animal Welfare',
-    status: 'Approved'
-  }
-].filter(ngo => ngo.status === 'Approved');
-
 export function DonorAppProvider({ children }: { children: React.ReactNode }) {
-  const [ngos] = useState<NGO[]>(mockNGOs);
+  const [ngos, setNgos] = useState<NGO[]>([]);
   const [donations, setDonations] = useState<Donation[]>([
     {
       id: '1',
@@ -146,6 +88,65 @@ export function DonorAppProvider({ children }: { children: React.ReactNode }) {
       status: 'Scheduled'
     }
   ]);
+
+  // Fetch approved NGOs from Supabase
+  useEffect(() => {
+    const fetchNGOs = async () => {
+      const { data, error } = await (supabase as any)
+        .from('ngos')
+        .select('*')
+        .eq('status', 'Approved');
+
+      if (error) {
+        console.error('Error fetching NGOs:', error);
+        return;
+      }
+
+      if (data) {
+        // Map database NGOs to frontend format with default coordinates
+        const mappedNGOs: NGO[] = data.map((ngo: any, index: number) => ({
+          id: ngo.id,
+          name: ngo.name,
+          address: ngo.address,
+          lat: 19.0760 + (index * 0.5), // Default coordinates spread across map
+          lng: 72.8777 + (index * 0.5),
+          needs: ngo.documents?.needs || [],
+          contact: ngo.contact,
+          category: ngo.category,
+          status: ngo.status,
+          memberCount: ngo.documents?.member_count,
+          establishedDate: ngo.documents?.established_date,
+          description: ngo.description,
+          paymentUpiId: ngo.documents?.payment_upi_id,
+          paymentQrCode: ngo.documents?.payment_qr_code_url,
+        }));
+        setNgos(mappedNGOs);
+      }
+    };
+
+    fetchNGOs();
+
+    // Subscribe to real-time changes
+    const channel = (supabase as any)
+      .channel('ngos-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'ngos',
+          filter: 'status=eq.Approved'
+        },
+        () => {
+          fetchNGOs(); // Refetch when NGOs change
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const addDonation = (donation: Omit<Donation, 'id' | 'date'>) => {
     const newDonation: Donation = {
