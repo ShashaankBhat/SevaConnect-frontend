@@ -112,8 +112,8 @@ export function BrowseNGOsPage() {
                 />
               )}
 
-              {/* NGO markers */}
-              {ngos.map((ngo) => (
+              {/* NGO markers - only approved NGOs */}
+              {ngos.filter(ngo => ngo.status === 'Approved').map((ngo) => (
                 <Marker
                   key={ngo.id}
                   position={{ lat: ngo.lat, lng: ngo.lng }}
@@ -152,11 +152,11 @@ export function BrowseNGOsPage() {
           </LoadScript>
         </div>
 
-        {/* NGO List Section */}
+        {/* NGO List Section - only approved NGOs */}
         <div className="space-y-4">
           <h2 className="text-xl font-semibold">Available NGOs</h2>
           <div className="space-y-4 max-h-[500px] overflow-y-auto">
-            {ngos.map((ngo) => (
+            {ngos.filter(ngo => ngo.status === 'Approved').map((ngo) => (
               <Card key={ngo.id} className="hover:shadow-md transition-shadow">
                 <CardHeader>
                   <div className="flex justify-between items-start">

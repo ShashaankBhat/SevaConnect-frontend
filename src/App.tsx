@@ -17,6 +17,7 @@ import NeedsPage from "./pages/NeedsPage";
 import DonationsPage from "./pages/DonationsPage";
 import InventoryPage from "./pages/InventoryPage";
 import AlertsPage from "./pages/AlertsPage";
+import NGOAboutPage from "./pages/NGOAboutPage";
 
 // Donor Pages
 import { DonorAuthPage } from "@/pages/donor/DonorAuthPage";
@@ -142,6 +143,7 @@ const App = () => (
                         <Route path="donations" element={<DonationsPage />} />
                         <Route path="inventory" element={<InventoryPage />} />
                         <Route path="alerts" element={<AlertsPage />} />
+                        <Route path="about" element={<NGOAboutPage />} />
                       </Route>
                       
                       {/* Donor Routes */}

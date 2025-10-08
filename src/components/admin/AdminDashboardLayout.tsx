@@ -1,6 +1,7 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAdminAuth } from '@/contexts/AdminAuthContext';
 import AdminSidebar from './AdminSidebar';
+import { AppNavbar } from '@/components/common/AppNavbar';
 
 export default function AdminDashboardLayout() {
   const { admin, isLoading } = useAdminAuth();
@@ -21,13 +22,16 @@ export default function AdminDashboardLayout() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <AdminSidebar />
-      <main className="flex-1 overflow-y-auto bg-background">
-        <div className="container mx-auto p-6">
-          <Outlet />
-        </div>
-      </main>
+    <div className="flex flex-col h-screen overflow-hidden">
+      <AppNavbar />
+      <div className="flex flex-1 overflow-hidden">
+        <AdminSidebar />
+        <main className="flex-1 overflow-y-auto bg-background">
+          <div className="container mx-auto p-6">
+            <Outlet />
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

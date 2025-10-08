@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, Clock, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { AppNavbar } from '@/components/common/AppNavbar';
 
 export function DashboardLayout() {
   const { user, logout } = useAuth();
@@ -76,13 +77,16 @@ export function DashboardLayout() {
 
   // Show dashboard only if verified
   return (
-    <div className="flex h-screen bg-background">
-      <Sidebar />
-      <main className="flex-1 overflow-auto">
-        <div className="p-6">
-          <Outlet />
-        </div>
-      </main>
+    <div className="flex flex-col h-screen bg-background">
+      <AppNavbar />
+      <div className="flex flex-1 overflow-hidden">
+        <Sidebar />
+        <main className="flex-1 overflow-auto">
+          <div className="p-6">
+            <Outlet />
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

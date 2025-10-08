@@ -6,7 +6,8 @@ import {
   Gift, 
   Warehouse, 
   AlertTriangle,
-  LogOut
+  LogOut,
+  Building2
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApp } from '@/contexts/AppContext';
@@ -16,6 +17,7 @@ const navigation = [
   { name: 'View Donations', href: '/dashboard/donations', icon: Gift },
   { name: 'Manage Inventory', href: '/dashboard/inventory', icon: Warehouse },
   { name: 'Alerts', href: '/dashboard/alerts', icon: AlertTriangle },
+  { name: 'About Us', href: '/dashboard/about', icon: Building2 },
 ];
 
 export function Sidebar() {

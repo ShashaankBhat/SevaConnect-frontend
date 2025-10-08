@@ -9,6 +9,12 @@ export interface NGO {
   needs: string[];
   contact: string;
   category: string;
+  status?: string;
+  memberCount?: string;
+  establishedDate?: string;
+  description?: string;
+  paymentUpiId?: string;
+  paymentQrCode?: string;
 }
 
 export interface Donation {
@@ -54,7 +60,8 @@ const mockNGOs: NGO[] = [
     lng: 72.8777,
     needs: ['Rice', 'Dal', 'Cooking Oil', 'Vegetables'],
     contact: '+91 98765 43210',
-    category: 'Food'
+    category: 'Food',
+    status: 'Approved'
   },
   {
     id: '2',
@@ -64,7 +71,8 @@ const mockNGOs: NGO[] = [
     lng: 77.2090,
     needs: ['Winter Clothes', 'Children Clothes', 'Blankets'],
     contact: '+91 87654 32109',
-    category: 'Clothes'
+    category: 'Clothes',
+    status: 'Approved'
   },
   {
     id: '3',
@@ -74,7 +82,8 @@ const mockNGOs: NGO[] = [
     lng: 77.5946,
     needs: ['Medicines', 'First Aid Supplies', 'Medical Equipment'],
     contact: '+91 76543 21098',
-    category: 'Medicine'
+    category: 'Medicine',
+    status: 'Approved'
   },
   {
     id: '4',
@@ -84,7 +93,8 @@ const mockNGOs: NGO[] = [
     lng: 73.8567,
     needs: ['Books', 'Stationery', 'Computers', 'Notebooks'],
     contact: '+91 65432 10987',
-    category: 'Education'
+    category: 'Education',
+    status: 'Approved'
   },
   {
     id: '5',
@@ -94,9 +104,10 @@ const mockNGOs: NGO[] = [
     lng: 80.2707,
     needs: ['Pet Food', 'Veterinary Supplies', 'Shelter Materials'],
     contact: '+91 54321 09876',
-    category: 'Animal Welfare'
+    category: 'Animal Welfare',
+    status: 'Approved'
   }
-];
+].filter(ngo => ngo.status === 'Approved');
 
 export function DonorAppProvider({ children }: { children: React.ReactNode }) {
   const [ngos] = useState<NGO[]>(mockNGOs);
