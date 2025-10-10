@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 
 interface NGORegistration {
   id: string;
@@ -27,21 +26,27 @@ export function AdminAppProvider({ children }: { children: React.ReactNode }) {
   const [ngoRegistrations, setNgoRegistrations] = useState<NGORegistration[]>([]);
 
   useEffect(() => {
-    // Fetch NGO registrations from Supabase
+    // Fetch NGO registrations from MongoDB
     const fetchNGOs = async () => {
-      const { data, error } = await (supabase as any)
-        .from('ngos')
-        .select('*')
-        .order('created_at', { ascending: false });
+      try {
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ngo-operations`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ action: 'fetchAll' }),
+        });
 
-      if (error) {
-        console.error('Error fetching NGO registrations:', error);
-        return;
-      }
+        const data = await response.json();
 
-      if (data) {
+        if (data.error) {
+          console.error('Error fetching NGO registrations:', data.error);
+          return;
+        }
+
         const registrations: NGORegistration[] = data.map((ngo: any) => ({
-          id: ngo.id,
+          id: ngo._id,
           name: ngo.name,
           email: ngo.email,
           contact: ngo.contact,
@@ -54,65 +59,75 @@ export function AdminAppProvider({ children }: { children: React.ReactNode }) {
           rejectionReason: ngo.rejection_reason
         }));
         setNgoRegistrations(registrations);
+      } catch (error) {
+        console.error('Error fetching NGO registrations:', error);
       }
     };
 
     fetchNGOs();
 
-    // Subscribe to real-time changes
-    const channel = (supabase as any)
-      .channel('ngos-admin-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'ngos'
-        },
-        () => {
-          fetchNGOs(); // Refetch when NGOs change
-        }
-      )
-      .subscribe();
+    // Poll for updates every 30 seconds
+    const interval = setInterval(fetchNGOs, 30000);
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => clearInterval(interval);
   }, []);
 
   const verifyNGO = async (id: string) => {
-    const { error } = await (supabase as any)
-      .from('ngos')
-      .update({ status: 'Approved' })
-      .eq('id', id);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ngo-operations`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ 
+          action: 'updateStatus',
+          data: { id, status: 'Approved' }
+        }),
+      });
 
-    if (error) {
+      const result = await response.json();
+
+      if (result.error) {
+        console.error('Error verifying NGO:', result.error);
+        return;
+      }
+      
+      setNgoRegistrations(prev => 
+        prev.map(ngo => ngo.id === id ? { ...ngo, status: 'Approved' } : ngo)
+      );
+    } catch (error) {
       console.error('Error verifying NGO:', error);
-      return;
     }
-    
-    setNgoRegistrations(prev => 
-      prev.map(ngo => ngo.id === id ? { ...ngo, status: 'Approved' } : ngo)
-    );
   };
 
   const rejectNGO = async (id: string, reason?: string) => {
-    const { error } = await (supabase as any)
-      .from('ngos')
-      .update({ 
-        status: 'Rejected',
-        rejection_reason: reason 
-      })
-      .eq('id', id);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ngo-operations`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({ 
+          action: 'updateStatus',
+          data: { id, status: 'Rejected', rejection_reason: reason }
+        }),
+      });
 
-    if (error) {
+      const result = await response.json();
+
+      if (result.error) {
+        console.error('Error rejecting NGO:', result.error);
+        return;
+      }
+      
+      setNgoRegistrations(prev => 
+        prev.map(ngo => ngo.id === id ? { ...ngo, status: 'Rejected', rejectionReason: reason } : ngo)
+      );
+    } catch (error) {
       console.error('Error rejecting NGO:', error);
-      return;
     }
-    
-    setNgoRegistrations(prev => 
-      prev.map(ngo => ngo.id === id ? { ...ngo, status: 'Rejected', rejectionReason: reason } : ngo)
-    );
   };
 
   return (

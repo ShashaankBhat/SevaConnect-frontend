@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 
 export interface NGO {
   id: string;
@@ -89,26 +88,32 @@ export function DonorAppProvider({ children }: { children: React.ReactNode }) {
     }
   ]);
 
-  // Fetch approved NGOs from Supabase
+  // Fetch approved NGOs from MongoDB
   useEffect(() => {
     const fetchNGOs = async () => {
-      const { data, error } = await (supabase as any)
-        .from('ngos')
-        .select('*')
-        .eq('status', 'Approved');
+      try {
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ngo-operations`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ action: 'fetchApproved' }),
+        });
 
-      if (error) {
-        console.error('Error fetching NGOs:', error);
-        return;
-      }
+        const data = await response.json();
 
-      if (data) {
-        // Map database NGOs to frontend format with default coordinates
+        if (data.error) {
+          console.error('Error fetching NGOs:', data.error);
+          return;
+        }
+
+        // Map MongoDB NGOs to frontend format
         const mappedNGOs: NGO[] = data.map((ngo: any, index: number) => ({
-          id: ngo.id,
+          id: ngo._id,
           name: ngo.name,
           address: ngo.address,
-          lat: 19.0760 + (index * 0.5), // Default coordinates spread across map
+          lat: 19.0760 + (index * 0.5),
           lng: 72.8777 + (index * 0.5),
           needs: ngo.documents?.needs || [],
           contact: ngo.contact,
@@ -121,31 +126,17 @@ export function DonorAppProvider({ children }: { children: React.ReactNode }) {
           paymentQrCode: ngo.documents?.payment_qr_code_url,
         }));
         setNgos(mappedNGOs);
+      } catch (error) {
+        console.error('Error fetching NGOs:', error);
       }
     };
 
     fetchNGOs();
 
-    // Subscribe to real-time changes
-    const channel = (supabase as any)
-      .channel('ngos-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'ngos',
-          filter: 'status=eq.Approved'
-        },
-        () => {
-          fetchNGOs(); // Refetch when NGOs change
-        }
-      )
-      .subscribe();
+    // Poll for updates every 30 seconds (replaces real-time)
+    const interval = setInterval(fetchNGOs, 30000);
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => clearInterval(interval);
   }, []);
 
   const addDonation = (donation: Omit<Donation, 'id' | 'date'>) => {
