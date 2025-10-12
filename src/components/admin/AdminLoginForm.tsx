@@ -18,9 +18,9 @@ export default function AdminLoginForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const success = await login(email, password);
+    const result = await login(email, password);
     
-    if (success) {
+    if (result.success) {
       toast({
         title: "Login Successful",
         description: "Welcome back, Administrator!",
@@ -30,7 +30,7 @@ export default function AdminLoginForm() {
     } else {
       toast({
         title: "Login Failed",
-        description: "Invalid email or password.",
+        description: result.error || "Invalid email or password.",
         variant: "destructive",
         duration: 3000,
       });
@@ -77,7 +77,7 @@ export default function AdminLoginForm() {
           </Button>
 
           <div className="mt-4 text-center text-xs text-muted-foreground">
-            Demo credentials: admin@sevaconnect.com / admin123
+            Please use your admin credentials to login
           </div>
         </form>
       </CardContent>

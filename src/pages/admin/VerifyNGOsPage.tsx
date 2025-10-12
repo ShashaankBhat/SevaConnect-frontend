@@ -279,6 +279,19 @@ export default function VerifyNGOsPage() {
                 <Label className="text-muted-foreground">Description</Label>
                 <p className="font-medium">{selectedNGO?.description}</p>
               </div>
+              {selectedNGO?.documents && (
+                <div className="col-span-2">
+                  <Label className="text-muted-foreground">Submitted Documents</Label>
+                  <div className="mt-2 space-y-2">
+                    {Object.entries(selectedNGO.documents).map(([key, value]) => (
+                      <div key={key} className="flex justify-between p-2 bg-muted rounded">
+                        <span className="font-medium capitalize">{key.replace(/_/g, ' ')}</span>
+                        <span className="text-muted-foreground">{String(value)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div>
                 <Label className="text-muted-foreground">Status</Label>
                 <div className="mt-1">{selectedNGO && getStatusBadge(selectedNGO.status)}</div>

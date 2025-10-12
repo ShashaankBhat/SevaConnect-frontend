@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { User } from '@supabase/supabase-js';
 
 interface Admin {
   id: string;
@@ -9,8 +11,8 @@ interface Admin {
 
 interface AdminAuthContextType {
   admin: Admin | null;
-  login: (email: string, password: string) => Promise<boolean>;
-  logout: () => void;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  logout: () => Promise<void>;
   isLoading: boolean;
 }
 
@@ -21,39 +23,97 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const savedAdmin = localStorage.getItem('sevaconnect_admin');
-    if (savedAdmin) {
-      setAdmin(JSON.parse(savedAdmin));
-    }
-    setIsLoading(false);
+    // Check current session
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        await checkAdminRole(session.user);
+      }
+      setIsLoading(false);
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        await checkAdminRole(session.user);
+      } else {
+        setAdmin(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    setIsLoading(true);
-    
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Hardcoded admin credentials for demo
-    if (email === 'admin@sevaconnect.com' && password === 'admin123') {
-      const adminUser: Admin = {
-        id: 'admin-1',
-        name: 'Platform Administrator',
-        email: 'admin@sevaconnect.com',
-        role: 'admin'
-      };
-      setAdmin(adminUser);
-      localStorage.setItem('sevaconnect_admin', JSON.stringify(adminUser));
-      setIsLoading(false);
-      return true;
+  const checkAdminRole = async (user: User): Promise<boolean> => {
+    try {
+      const { data, error } = await (supabase as any)
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'admin')
+        .single();
+
+      if (data && !error) {
+        const { data: profile } = await (supabase as any)
+          .from('profiles')
+          .select('name, email')
+          .eq('id', user.id)
+          .single();
+
+        setAdmin({
+          id: user.id,
+          name: (profile && profile.name) || 'Administrator',
+          email: (profile && profile.email) || user.email || '',
+          role: 'admin'
+        });
+        return true;
+      } else {
+        setAdmin(null);
+        return false;
+      }
+    } catch (error) {
+      console.error('Error checking admin role:', error);
+      setAdmin(null);
+      return false;
     }
-    
-    setIsLoading(false);
-    return false;
   };
 
-  const logout = () => {
+  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+    setIsLoading(true);
+    
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        setIsLoading(false);
+        return { success: false, error: error.message };
+      }
+
+      if (data.user) {
+        const isAdmin = await checkAdminRole(data.user);
+        setIsLoading(false);
+        
+        if (isAdmin) {
+          return { success: true };
+        } else {
+          await supabase.auth.signOut();
+          return { success: false, error: 'You do not have admin privileges' };
+        }
+      }
+      
+      setIsLoading(false);
+      return { success: false, error: 'Login failed' };
+    } catch (error) {
+      setIsLoading(false);
+      return { success: false, error: 'An error occurred during login' };
+    }
+  };
+
+  const logout = async () => {
+    await supabase.auth.signOut();
     setAdmin(null);
-    localStorage.removeItem('sevaconnect_admin');
   };
 
   return (

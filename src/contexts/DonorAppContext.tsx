@@ -75,18 +75,7 @@ export function DonorAppProvider({ children }: { children: React.ReactNode }) {
     }
   ]);
   
-  const [volunteerBookings, setVolunteerBookings] = useState<VolunteerBooking[]>([
-    {
-      id: '1',
-      ngoId: '1',
-      ngoName: 'Food for All Foundation',
-      pickupAddress: '123 My Address, Mumbai',
-      dropAddress: '123 Charity Lane, Mumbai, Maharashtra',
-      date: '2024-01-20',
-      time: '10:00',
-      status: 'Scheduled'
-    }
-  ]);
+  const [volunteerBookings, setVolunteerBookings] = useState<VolunteerBooking[]>([]);
 
   // Fetch approved NGOs from MongoDB
   useEffect(() => {
@@ -157,14 +146,76 @@ export function DonorAppProvider({ children }: { children: React.ReactNode }) {
     );
   };
 
-  const addVolunteerBooking = (booking: Omit<VolunteerBooking, 'id' | 'status'>) => {
-    const newBooking: VolunteerBooking = {
-      ...booking,
-      id: Date.now().toString(),
-      status: 'Scheduled'
-    };
-    setVolunteerBookings(prev => [...prev, newBooking]);
+  const addVolunteerBooking = async (booking: Omit<VolunteerBooking, 'id' | 'status'>) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/volunteer-operations`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
+          action: 'create',
+          data: {
+            ngo_name: booking.ngoName,
+            donor_name: 'Donor', // This should come from donor context
+            pickup_address: booking.pickupAddress,
+            drop_address: booking.dropAddress,
+            scheduled_date: `${booking.date} ${booking.time}`,
+          }
+        }),
+      });
+
+      const data = await response.json();
+      
+      if (data._id) {
+        const newBooking: VolunteerBooking = {
+          id: data._id,
+          ...booking,
+          status: 'Scheduled'
+        };
+        setVolunteerBookings(prev => [...prev, newBooking]);
+      }
+    } catch (error) {
+      console.error('Error creating volunteer booking:', error);
+    }
   };
+
+  // Fetch volunteer bookings
+  useEffect(() => {
+    const fetchVolunteerBookings = async () => {
+      try {
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/volunteer-operations`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({ action: 'fetchAll' }),
+        });
+
+        const data = await response.json();
+        
+        if (!data.error && Array.isArray(data)) {
+          const mappedBookings: VolunteerBooking[] = data.map((booking: any) => ({
+            id: booking._id,
+            ngoId: '', // Not stored in current schema
+            ngoName: booking.ngo_name,
+            pickupAddress: booking.pickup_address,
+            dropAddress: booking.drop_address,
+            date: booking.scheduled_date?.split(' ')[0] || '',
+            time: booking.scheduled_date?.split(' ')[1] || '',
+            status: booking.status as any
+          }));
+          setVolunteerBookings(mappedBookings);
+        }
+      } catch (error) {
+        console.error('Error fetching volunteer bookings:', error);
+      }
+    };
+
+    fetchVolunteerBookings();
+  }, []);
 
   return (
     <DonorAppContext.Provider value={{

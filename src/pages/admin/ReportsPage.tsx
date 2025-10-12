@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -6,43 +6,135 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Download, TrendingUp, Users, Heart, Calendar } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-
-// Mock data for charts
-const donationsData = [
-  { month: 'Jan', amount: 45000, count: 120 },
-  { month: 'Feb', amount: 52000, count: 145 },
-  { month: 'Mar', amount: 48000, count: 130 },
-  { month: 'Apr', amount: 61000, count: 168 },
-  { month: 'May', amount: 55000, count: 152 },
-  { month: 'Jun', amount: 67000, count: 189 },
-];
-
-const volunteersData = [
-  { month: 'Jan', volunteers: 45 },
-  { month: 'Feb', volunteers: 52 },
-  { month: 'Mar', volunteers: 48 },
-  { month: 'Apr', volunteers: 61 },
-  { month: 'May', volunteers: 58 },
-  { month: 'Jun', volunteers: 70 },
-];
-
-const ngoStatusData = [
-  { name: 'Verified', value: 45, color: 'hsl(var(--success))' },
-  { name: 'Pending', value: 12, color: 'hsl(var(--warning))' },
-  { name: 'Rejected', value: 8, color: 'hsl(var(--destructive))' },
-];
-
-const categoryData = [
-  { category: 'Education', ngos: 15, donations: 25000 },
-  { category: 'Healthcare', ngos: 12, donations: 32000 },
-  { category: 'Environment', ngos: 10, donations: 18000 },
-  { category: 'Food Security', ngos: 8, donations: 22000 },
-  { category: 'Others', ngos: 5, donations: 12000 },
-];
+import { supabase } from '@/integrations/supabase/client';
 
 export default function ReportsPage() {
   const { toast } = useToast();
   const [dateRange, setDateRange] = useState('6months');
+  const [donationsData, setDonationsData] = useState<any[]>([]);
+  const [volunteersData, setVolunteersData] = useState<any[]>([]);
+  const [ngoStatusData, setNgoStatusData] = useState<any[]>([]);
+  const [categoryData, setCategoryData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchReportsData();
+  }, [dateRange]);
+
+  const fetchReportsData = async () => {
+    setLoading(true);
+    try {
+      // Fetch donations data
+      const { data: donations } = await (supabase as any)
+        .from('donations')
+        .select('amount, created_at')
+        .order('created_at', { ascending: true });
+
+      // Process donations by month
+      const donationsByMonth = processDataByMonth(donations || [], 'amount');
+      setDonationsData(donationsByMonth);
+
+      // Fetch volunteer requests
+      const { data: volunteers } = await (supabase as any)
+        .from('volunteer_requests')
+        .select('created_at')
+        .order('created_at', { ascending: true });
+
+      const volunteersByMonth = processVolunteersByMonth(volunteers || []);
+      setVolunteersData(volunteersByMonth);
+
+      // Fetch NGO status data
+      const { data: ngos } = await (supabase as any)
+        .from('ngos')
+        .select('status');
+
+      const statusCounts = processNGOStatus(ngos || []);
+      setNgoStatusData(statusCounts);
+
+      // Fetch category data
+      const { data: ngosByCategory } = await (supabase as any)
+        .from('ngos')
+        .select('category');
+
+      const { data: donationsByNGO } = await (supabase as any)
+        .from('donations')
+        .select('amount, ngo_id');
+
+      const categoryStats = processCategoryData(ngosByCategory || [], donationsByNGO || []);
+      setCategoryData(categoryStats);
+
+    } catch (error) {
+      console.error('Error fetching reports data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load reports data",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const processDataByMonth = (data: any[], field: string) => {
+    const monthMap: any = {};
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    data.forEach(item => {
+      const date = new Date(item.created_at);
+      const monthKey = months[date.getMonth()];
+      if (!monthMap[monthKey]) {
+        monthMap[monthKey] = { month: monthKey, amount: 0, count: 0 };
+      }
+      monthMap[monthKey].amount += Number(item[field] || 0);
+      monthMap[monthKey].count += 1;
+    });
+
+    return months.map(month => monthMap[month] || { month, amount: 0, count: 0 });
+  };
+
+  const processVolunteersByMonth = (data: any[]) => {
+    const monthMap: any = {};
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    data.forEach(item => {
+      const date = new Date(item.created_at);
+      const monthKey = months[date.getMonth()];
+      if (!monthMap[monthKey]) {
+        monthMap[monthKey] = { month: monthKey, volunteers: 0 };
+      }
+      monthMap[monthKey].volunteers += 1;
+    });
+
+    return months.map(month => monthMap[month] || { month, volunteers: 0 });
+  };
+
+  const processNGOStatus = (ngos: any[]) => {
+    const statusCount: any = { Approved: 0, Pending: 0, Rejected: 0 };
+    ngos.forEach(ngo => {
+      if (statusCount[ngo.status] !== undefined) {
+        statusCount[ngo.status]++;
+      }
+    });
+
+    return [
+      { name: 'Verified', value: statusCount.Approved, color: 'hsl(var(--success))' },
+      { name: 'Pending', value: statusCount.Pending, color: 'hsl(var(--warning))' },
+      { name: 'Rejected', value: statusCount.Rejected, color: 'hsl(var(--destructive))' },
+    ];
+  };
+
+  const processCategoryData = (ngos: any[], donations: any[]) => {
+    const categoryMap: any = {};
+    
+    ngos.forEach(ngo => {
+      if (!categoryMap[ngo.category]) {
+        categoryMap[ngo.category] = { category: ngo.category, ngos: 0, donations: 0 };
+      }
+      categoryMap[ngo.category].ngos++;
+    });
+
+    return Object.values(categoryMap);
+  };
 
   const exportToPDF = () => {
     toast({
@@ -64,8 +156,16 @@ export default function ReportsPage() {
     totalDonations: donationsData.reduce((sum, d) => sum + d.amount, 0),
     totalVolunteers: volunteersData.reduce((sum, v) => sum + v.volunteers, 0),
     totalNGOs: ngoStatusData.reduce((sum, n) => sum + n.value, 0),
-    avgDonation: Math.round(donationsData.reduce((sum, d) => sum + d.amount, 0) / donationsData.length),
+    avgDonation: donationsData.length > 0 ? Math.round(donationsData.reduce((sum, d) => sum + d.amount, 0) / donationsData.length) : 0,
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
