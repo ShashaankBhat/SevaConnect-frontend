@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+﻿import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useNotifications } from '@/contexts/NotificationContext';
 
-interface NGO {
+interface NGOUser {
   id: string;
   name: string;
   email: string;
@@ -11,12 +12,19 @@ interface NGO {
   documents?: string[];
   status: 'Pending' | 'Verified' | 'Rejected';
   rejectionReason?: string;
+  submittedAt: string;
+}
+
+interface NGORegistration extends NGOUser {
+  password: string;
 }
 
 interface AuthContextType {
-  user: NGO | null;
+  user: NGOUser | null;
   login: (email: string, password: string) => Promise<boolean>;
-  register: (ngoData: Omit<NGO, 'id' | 'status' | 'rejectionReason'> & { password: string }) => Promise<boolean>;
+  register: (
+    ngoData: Omit<NGORegistration, 'id' | 'status' | 'rejectionReason' | 'submittedAt'>
+  ) => Promise<boolean>;
   logout: () => void;
   isLoading: boolean;
 }
@@ -24,70 +32,92 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<NGO | null>(null);
+  const [user, setUser] = useState<NGOUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { addNotification } = useNotifications();
 
   useEffect(() => {
-    // Check if user is logged in on app start
-    const savedUser = localStorage.getItem('sevaconnect_user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
+    try {
+      const savedUser = localStorage.getItem('sevaconnect_user');
+      if (savedUser) {
+        setUser(JSON.parse(savedUser));
+      }
+    } catch (error) {
+      console.error('Error parsing saved user:', error);
+      localStorage.removeItem('sevaconnect_user');
     }
     setIsLoading(false);
   }, []);
 
+  const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Check if NGO exists in localStorage
-    const registeredNGOs = JSON.parse(localStorage.getItem('sevaconnect_ngos') || '[]');
-    const ngo = registeredNGOs.find((n: any) => n.email === email && n.password === password);
-    
-    if (ngo) {
-      const { password: _, ...ngoData } = ngo;
-      setUser(ngoData);
-      localStorage.setItem('sevaconnect_user', JSON.stringify(ngoData));
-      setIsLoading(false);
-      return true;
+    await delay(1000);
+
+    try {
+      const registeredNGOs: NGORegistration[] = JSON.parse(localStorage.getItem('sevaconnect_ngos') || '[]');
+      const ngo = registeredNGOs.find(n => n.email === email && n.password === password);
+
+      if (ngo) {
+        const { password: _, ...userData } = ngo;
+        setUser(userData);
+        localStorage.setItem('sevaconnect_user', JSON.stringify(userData));
+        setIsLoading(false);
+        return true;
+      }
+    } catch (error) {
+      console.error('Login error:', error);
     }
-    
+
     setIsLoading(false);
     return false;
   };
 
-  const register = async (ngoData: Omit<NGO, 'id' | 'status' | 'rejectionReason'> & { password: string }): Promise<boolean> => {
+  const register = async (
+    ngoData: Omit<NGORegistration, 'id' | 'status' | 'rejectionReason' | 'submittedAt'>
+  ): Promise<boolean> => {
     setIsLoading(true);
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const registeredNGOs = JSON.parse(localStorage.getItem('sevaconnect_ngos') || '[]');
-    
-    // Check if email already exists
-    if (registeredNGOs.some((n: any) => n.email === ngoData.email)) {
+    await delay(1000);
+
+    try {
+      const registeredNGOs: NGORegistration[] = JSON.parse(localStorage.getItem('sevaconnect_ngos') || '[]');
+
+      if (registeredNGOs.some(n => n.email === ngoData.email)) {
+        setIsLoading(false);
+        return false;
+      }
+
+      const newNGO: NGORegistration = {
+        ...ngoData,
+        id: 'ngo-' + Date.now().toString(),
+        status: 'Pending',
+        submittedAt: new Date().toISOString(),
+      };
+
+      registeredNGOs.push(newNGO);
+      localStorage.setItem('sevaconnect_ngos', JSON.stringify(registeredNGOs));
+
+      const { password: _, ...userToStore } = newNGO;
+      setUser(userToStore);
+      localStorage.setItem('sevaconnect_user', JSON.stringify(userToStore));
+
+      // Notification for admin
+      addNotification({
+        type: 'new_ngo',
+        title: 'New NGO Registration',
+        message: `${ngoData.name} has submitted their registration for verification.`,
+        relatedId: newNGO.id,
+      });
+
+      console.log('NGO registered successfully:', newNGO);
+      setIsLoading(false);
+      return true;
+    } catch (error) {
+      console.error('Registration error:', error);
       setIsLoading(false);
       return false;
     }
-    
-    const newNGO = {
-      ...ngoData,
-      id: Date.now().toString(),
-      status: 'Pending' as const,
-      submittedAt: new Date().toISOString(),
-    };
-    
-    registeredNGOs.push(newNGO);
-    localStorage.setItem('sevaconnect_ngos', JSON.stringify(registeredNGOs));
-    
-    const { password: _, ...userToStore } = newNGO;
-    setUser(userToStore);
-    localStorage.setItem('sevaconnect_user', JSON.stringify(userToStore));
-    
-    setIsLoading(false);
-    return true;
   };
 
   const logout = () => {
@@ -104,8 +134,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 }

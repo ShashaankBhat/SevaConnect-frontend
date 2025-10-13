@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Users, CheckCircle, XCircle } from 'lucide-react';
+import { Users, CheckCircle } from 'lucide-react';
 
 interface Donor {
   id: string;
@@ -11,24 +11,56 @@ interface Donor {
   phone: string;
   address?: string;
   isVerified: boolean;
+  registeredAt: string;
 }
 
 export default function AdminDonorsPage() {
   const [donors, setDonors] = useState<Donor[]>([]);
 
   useEffect(() => {
-    // Load donors from localStorage
-    const registeredDonors = JSON.parse(localStorage.getItem('sevaconnect_donors') || '[]');
-    setDonors(registeredDonors);
+    const loadDonors = () => {
+      try {
+        const registeredDonors = JSON.parse(localStorage.getItem('sevaconnect_donors') || '[]');
+        console.log('Loaded donors:', registeredDonors);
+        setDonors(registeredDonors);
+      } catch (error) {
+        console.error('Error loading donors:', error);
+        setDonors([]);
+      }
+    };
+
+    loadDonors();
+
+    const handleStorageChange = () => {
+      loadDonors();
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    const interval = setInterval(loadDonors, 2000);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
   }, []);
+
+  const stats = {
+    total: donors.length,
+    verified: donors.filter((d) => d.isVerified).length,
+    unverified: donors.filter((d) => !d.isVerified).length,
+  };
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-foreground">Registered Donors</h1>
-        <p className="text-muted-foreground">View and manage all registered donors</p>
+        <p className="text-muted-foreground">
+          All donors are automatically verified upon registration
+        </p>
       </div>
 
+      {/* Stats Cards */}
       <div className="grid gap-6 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -36,82 +68,112 @@ export default function AdminDonorsPage() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{donors.length}</div>
+            <div className="text-2xl font-bold">{stats.total}</div>
+            <p className="text-xs text-muted-foreground">All registered donors</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Verified</CardTitle>
-            <CheckCircle className="h-4 w-4 text-success" />
+            <CardTitle className="text-sm font-medium">Verified Donors</CardTitle>
+            <CheckCircle className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-success">
-              {donors.filter(d => d.isVerified).length}
-            </div>
+            <div className="text-2xl font-bold text-green-600">{stats.verified}</div>
+            <p className="text-xs text-muted-foreground">Auto-verified on registration</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Unverified</CardTitle>
-            <XCircle className="h-4 w-4 text-warning" />
+            <CardTitle className="text-sm font-medium">Verification Rate</CardTitle>
+            <CheckCircle className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-warning">
-              {donors.filter(d => !d.isVerified).length}
+            <div className="text-2xl font-bold text-blue-600">
+              {stats.total > 0 ? Math.round((stats.verified / stats.total) * 100) : 0}%
             </div>
+            <p className="text-xs text-muted-foreground">Of all donors</p>
           </CardContent>
         </Card>
       </div>
 
+      {/* Donors Table */}
       <Card>
         <CardHeader>
           <CardTitle>All Donors</CardTitle>
-          <CardDescription>Complete list of registered donors on the platform</CardDescription>
+          <CardDescription>
+            {donors.length === 0
+              ? 'No donors registered yet'
+              : 'Showing all automatically verified donors'}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {donors.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Users className="mx-auto h-12 w-12 mb-4 opacity-50" />
               <p>No donors registered yet.</p>
+              <p className="text-sm">
+                When donors register, they will appear here as automatically verified.
+              </p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Address</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {donors.map((donor) => (
-                  <TableRow key={donor.id}>
-                    <TableCell className="font-medium">{donor.name}</TableCell>
-                    <TableCell>{donor.email}</TableCell>
-                    <TableCell>{donor.phone}</TableCell>
-                    <TableCell>{donor.address || 'Not provided'}</TableCell>
-                    <TableCell>
-                      {donor.isVerified ? (
-                        <Badge className="bg-success text-success-foreground">
+            <div className="rounded-md border overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Phone</TableHead>
+                    <TableHead>Address</TableHead>
+                    <TableHead>Registered</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {donors.map((donor) => (
+                    <TableRow key={donor.id} className="hover:bg-muted/50">
+                      <TableCell className="font-medium">{donor.name}</TableCell>
+                      <TableCell>{donor.email}</TableCell>
+                      <TableCell>{donor.phone}</TableCell>
+                      <TableCell>{donor.address || 'Not provided'}</TableCell>
+                      <TableCell>
+                        {new Date(donor.registeredAt).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className="bg-green-100 text-green-800 border-green-200">
                           <CheckCircle className="h-3 w-3 mr-1" />
                           Verified
                         </Badge>
-                      ) : (
-                        <Badge variant="secondary" className="text-warning">
-                          <XCircle className="h-3 w-3 mr-1" />
-                          Unverified
-                        </Badge>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Info Card */}
+      <Card className="bg-blue-50 border-blue-200">
+        <CardHeader>
+          <CardTitle className="text-blue-800 flex items-center gap-2">
+            <CheckCircle className="h-5 w-5" />
+            Auto-Verification System
+          </CardTitle>
+          <CardDescription className="text-blue-700">
+            All donors are automatically verified upon registration to provide instant access to
+            donation features.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
+            <li>No manual verification required for donors</li>
+            <li>Instant access to donation features</li>
+            <li>Simplified registration process</li>
+            <li>All donors appear as verified in the system</li>
+          </ul>
         </CardContent>
       </Card>
     </div>

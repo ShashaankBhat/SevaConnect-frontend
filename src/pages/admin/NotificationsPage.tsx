@@ -1,112 +1,87 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Bell, CheckCircle, AlertTriangle, Clock, Trash2 } from 'lucide-react';
+import { Bell, CheckCircle, AlertTriangle, Clock, Trash2, Users, Building2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-
-interface Notification {
-  id: string;
-  type: 'pending_approval' | 'expired_item' | 'new_registration' | 'system';
-  title: string;
-  message: string;
-  timestamp: Date;
-  isRead: boolean;
-  relatedId?: string;
-}
-
-// Mock data
-const mockNotifications: Notification[] = [
-  {
-    id: '1',
-    type: 'pending_approval',
-    title: 'New NGO Registration',
-    message: 'Hope Foundation has submitted their registration for verification.',
-    timestamp: new Date('2024-01-15T10:30:00'),
-    isRead: false,
-  },
-  {
-    id: '2',
-    type: 'expired_item',
-    title: 'Inventory Item Expiring Soon',
-    message: 'Medical supplies at Green Earth Initiative will expire in 7 days.',
-    timestamp: new Date('2024-01-15T09:15:00'),
-    isRead: false,
-  },
-  {
-    id: '3',
-    type: 'new_registration',
-    title: 'New Donor Registered',
-    message: 'Rahul Sharma has registered as a new donor.',
-    timestamp: new Date('2024-01-14T16:20:00'),
-    isRead: true,
-  },
-  {
-    id: '4',
-    type: 'pending_approval',
-    title: 'Volunteer Request Pending',
-    message: 'Priya Patel has requested to volunteer at Food Bank India.',
-    timestamp: new Date('2024-01-14T14:00:00'),
-    isRead: false,
-  },
-  {
-    id: '5',
-    type: 'system',
-    title: 'System Maintenance',
-    message: 'Scheduled maintenance on January 20, 2024 from 2 AM to 4 AM.',
-    timestamp: new Date('2024-01-13T11:00:00'),
-    isRead: true,
-  },
-];
+import { useNotifications } from '@/contexts/NotificationContext';
 
 export default function NotificationsPage() {
   const { toast } = useToast();
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
+  const {
+    notifications,
+    markAsRead,
+    deleteNotification,
+    markAllAsRead,
+    unreadCount,
+  } = useNotifications();
+
   const [activeTab, setActiveTab] = useState('all');
 
-  const markAsRead = (id: string) => {
-    setNotifications(notifications.map(n => 
-      n.id === id ? { ...n, isRead: true } : n
-    ));
-  };
-
-  const deleteNotification = (id: string) => {
-    setNotifications(notifications.filter(n => n.id !== id));
+  const handleMarkAsRead = (id: string) => {
+    markAsRead(id);
     toast({
-      title: "Notification Deleted",
-      description: "The notification has been removed.",
+      title: 'Notification Read',
+      description: 'Notification marked as read.',
     });
   };
 
-  const markAllAsRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, isRead: true })));
+  const handleDeleteNotification = (id: string) => {
+    deleteNotification(id);
     toast({
-      title: "All Marked as Read",
-      description: "All notifications have been marked as read.",
+      title: 'Notification Deleted',
+      description: 'The notification has been removed.',
+    });
+  };
+
+  const handleMarkAllAsRead = () => {
+    markAllAsRead();
+    toast({
+      title: 'All Marked as Read',
+      description: 'All notifications have been marked as read.',
     });
   };
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
       case 'pending_approval':
-        return <Clock className="h-5 w-5 text-warning" />;
+        return <Clock className="h-5 w-5 text-yellow-500" />;
       case 'expired_item':
-        return <AlertTriangle className="h-5 w-5 text-destructive" />;
+        return <AlertTriangle className="h-5 w-5 text-red-500" />;
       case 'new_registration':
-        return <CheckCircle className="h-5 w-5 text-success" />;
+        return <CheckCircle className="h-5 w-5 text-green-500" />;
+      case 'new_donor':
+        return <Users className="h-5 w-5 text-blue-500" />;
+      case 'new_ngo':
+        return <Building2 className="h-5 w-5 text-purple-500" />;
       default:
-        return <Bell className="h-5 w-5 text-primary" />;
+        return <Bell className="h-5 w-5 text-gray-500" />;
     }
   };
 
-  const filteredNotifications = notifications.filter(n => {
+  const getNotificationBadge = (type: string) => {
+    switch (type) {
+      case 'new_donor':
+        return <Badge className="bg-blue-100 text-blue-800 border-blue-200">New Donor</Badge>;
+      case 'new_ngo':
+        return <Badge className="bg-purple-100 text-purple-800 border-purple-200">New NGO</Badge>;
+      case 'pending_approval':
+        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Pending</Badge>;
+      default:
+        return null;
+    }
+  };
+
+  const filteredNotifications = notifications.filter((n) => {
     if (activeTab === 'unread') return !n.isRead;
     if (activeTab === 'read') return n.isRead;
     return true;
   });
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const pendingActionsCount = notifications.filter(
+    (n) => (n.type === 'pending_approval' || n.type === 'new_ngo') && !n.isRead
+  ).length;
 
   return (
     <div className="space-y-6">
@@ -116,15 +91,15 @@ export default function NotificationsPage() {
           <p className="text-muted-foreground">Stay updated with platform activities</p>
         </div>
         {unreadCount > 0 && (
-          <Button onClick={markAllAsRead}>
+          <Button onClick={handleMarkAllAsRead}>
             <CheckCircle className="mr-2 h-4 w-4" />
             Mark All as Read
           </Button>
         )}
       </div>
 
-      {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-3">
+      {/* Stats Section */}
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Notifications</CardTitle>
@@ -137,20 +112,33 @@ export default function NotificationsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Unread</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-warning" />
+            <AlertTriangle className="h-4 w-4 text-yellow-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-warning">{unreadCount}</div>
+            <div className="text-2xl font-bold text-yellow-600">{unreadCount}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Pending Actions</CardTitle>
-            <Clock className="h-4 w-4 text-destructive" />
+            <Clock className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-destructive">
-              {notifications.filter(n => n.type === 'pending_approval' && !n.isRead).length}
+            <div className="text-2xl font-bold text-red-600">{pendingActionsCount}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">New Registrations</CardTitle>
+            <Users className="h-4 w-4 text-blue-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">
+              {
+                notifications.filter(
+                  (n) => (n.type === 'new_donor' || n.type === 'new_ngo') && !n.isRead
+                ).length
+              }
             </div>
           </CardContent>
         </Card>
@@ -160,7 +148,9 @@ export default function NotificationsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Activity Feed</CardTitle>
-          <CardDescription>Recent notifications and alerts</CardDescription>
+          <CardDescription>
+            Real-time notifications for donor and NGO registrations
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -169,37 +159,40 @@ export default function NotificationsPage() {
               <TabsTrigger value="unread">Unread ({unreadCount})</TabsTrigger>
               <TabsTrigger value="read">Read ({notifications.length - unreadCount})</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value={activeTab} className="space-y-2">
               {filteredNotifications.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
                   <Bell className="mx-auto h-12 w-12 mb-4 opacity-50" />
                   <p>No notifications to display.</p>
+                  <p className="text-sm">
+                    Notifications will appear here when donors or NGOs register.
+                  </p>
                 </div>
               ) : (
                 filteredNotifications.map((notification) => (
                   <div
                     key={notification.id}
-                    className={cn(
-                      "flex items-start gap-4 p-4 rounded-lg border transition-colors",
-                      !notification.isRead ? "bg-muted/50" : "bg-background"
-                    )}
+                    className="flex items-start gap-4 p-4 rounded-lg border transition-colors"
                   >
-                    <div className="mt-1">
-                      {getNotificationIcon(notification.type)}
-                    </div>
+                    <div className="mt-1">{getNotificationIcon(notification.type)}</div>
                     <div className="flex-1 space-y-1">
                       <div className="flex items-start justify-between">
                         <div>
                           <p className="font-medium text-foreground">{notification.title}</p>
                           <p className="text-sm text-muted-foreground">{notification.message}</p>
                         </div>
-                        {!notification.isRead && (
-                          <Badge variant="secondary" className="ml-2">New</Badge>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {getNotificationBadge(notification.type)}
+                          {!notification.isRead && (
+                            <Badge variant="secondary" className="ml-2">
+                              New
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        {notification.timestamp.toLocaleString()}
+                        {new Date(notification.timestamp).toLocaleString()}
                       </p>
                     </div>
                     <div className="flex gap-2">
@@ -207,7 +200,7 @@ export default function NotificationsPage() {
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => markAsRead(notification.id)}
+                          onClick={() => handleMarkAsRead(notification.id)}
                         >
                           <CheckCircle className="h-4 w-4" />
                         </Button>
@@ -215,9 +208,9 @@ export default function NotificationsPage() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => deleteNotification(notification.id)}
+                        onClick={() => handleDeleteNotification(notification.id)}
                       >
-                        <Trash2 className="h-4 w-4 text-destructive" />
+                        <Trash2 className="h-4 w-4 text-red-500" />
                       </Button>
                     </div>
                   </div>
@@ -229,8 +222,4 @@ export default function NotificationsPage() {
       </Card>
     </div>
   );
-}
-
-function cn(...classes: any[]) {
-  return classes.filter(Boolean).join(' ');
 }

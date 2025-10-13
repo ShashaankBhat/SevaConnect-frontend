@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+﻿import React, { createContext, useContext, useState, useEffect } from 'react';
 
-interface NGORegistration {
+interface NGOUser {
   id: string;
   name: string;
   email: string;
@@ -8,134 +8,138 @@ interface NGORegistration {
   address: string;
   category: string;
   description: string;
-  documents?: any;
-  status: 'Pending' | 'Approved' | 'Rejected';
+  documents?: string[];
+  status: 'Pending' | 'Verified' | 'Rejected';
   submittedAt: string;
   rejectionReason?: string;
 }
 
 interface AdminAppContextType {
-  ngoRegistrations: NGORegistration[];
+  ngoRegistrations: NGOUser[];
   verifyNGO: (id: string) => void;
   rejectNGO: (id: string, reason?: string) => void;
+  refreshData: () => void;
 }
 
 const AdminAppContext = createContext<AdminAppContextType | undefined>(undefined);
 
 export function AdminAppProvider({ children }: { children: React.ReactNode }) {
-  const [ngoRegistrations, setNgoRegistrations] = useState<NGORegistration[]>([]);
+  const [ngoRegistrations, setNgoRegistrations] = useState<NGOUser[]>([]);
 
-  useEffect(() => {
-    // Fetch NGO registrations from MongoDB
-    const fetchNGOs = async () => {
-      try {
-        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ngo-operations`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({ action: 'fetchAll' }),
-        });
-
-        const data = await response.json();
-
-        if (data.error) {
-          console.error('Error fetching NGO registrations:', data.error);
-          return;
-        }
-
-        const registrations: NGORegistration[] = data.map((ngo: any) => ({
-          id: ngo._id,
-          name: ngo.name,
-          email: ngo.email,
-          contact: ngo.contact,
-          address: ngo.address,
-          category: ngo.category,
-          description: ngo.description,
-          documents: ngo.documents,
-          status: ngo.status,
-          submittedAt: ngo.created_at,
-          rejectionReason: ngo.rejection_reason
-        }));
-        setNgoRegistrations(registrations);
-      } catch (error) {
-        console.error('Error fetching NGO registrations:', error);
-      }
-    };
-
-    fetchNGOs();
-
-    // Poll for updates every 30 seconds
-    const interval = setInterval(fetchNGOs, 30000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const verifyNGO = async (id: string) => {
+  const loadNGOData = () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ngo-operations`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
-        body: JSON.stringify({ 
-          action: 'updateStatus',
-          data: { id, status: 'Approved' }
-        }),
-      });
-
-      const result = await response.json();
-
-      if (result.error) {
-        console.error('Error verifying NGO:', result.error);
-        return;
-      }
+      // Load from sevaconnect_ngos (where registrations are stored)
+      const ngoData = JSON.parse(localStorage.getItem('sevaconnect_ngos') || '[]');
+      console.log('Loaded NGO data:', ngoData);
       
-      setNgoRegistrations(prev => 
-        prev.map(ngo => ngo.id === id ? { ...ngo, status: 'Approved' } : ngo)
-      );
+      if (ngoData.length > 0) {
+        // Convert to NGOUser format (remove password field)
+        const registrations: NGOUser[] = ngoData.map((ngo: any) => {
+          const { password, ...ngoUser } = ngo;
+          return ngoUser;
+        });
+        setNgoRegistrations(registrations);
+      } else {
+        // If no NGO data, set empty array
+        setNgoRegistrations([]);
+      }
     } catch (error) {
-      console.error('Error verifying NGO:', error);
+      console.error('Error loading NGO data:', error);
+      setNgoRegistrations([]);
     }
   };
 
-  const rejectNGO = async (id: string, reason?: string) => {
-    try {
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ngo-operations`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
-        body: JSON.stringify({ 
-          action: 'updateStatus',
-          data: { id, status: 'Rejected', rejection_reason: reason }
-        }),
-      });
+  useEffect(() => {
+    loadNGOData();
+    
+    // Listen for storage changes to update in real-time
+    const handleStorageChange = () => {
+      console.log('Storage changed, reloading data...');
+      loadNGOData();
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Also check every 2 seconds for changes (for same-tab updates)
+    const interval = setInterval(loadNGOData, 2000);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
+    };
+  }, []);
 
-      const result = await response.json();
-
-      if (result.error) {
-        console.error('Error rejecting NGO:', result.error);
-        return;
-      }
-      
-      setNgoRegistrations(prev => 
-        prev.map(ngo => ngo.id === id ? { ...ngo, status: 'Rejected', rejectionReason: reason } : ngo)
-      );
-    } catch (error) {
-      console.error('Error rejecting NGO:', error);
+  const verifyNGO = (id: string) => {
+    console.log('Verifying NGO:', id);
+    
+    // Update in ngoRegistrations state
+    const updatedRegistrations = ngoRegistrations.map(ngo =>
+      ngo.id === id ? { ...ngo, status: 'Verified' as const } : ngo
+    );
+    setNgoRegistrations(updatedRegistrations);
+    
+    // Also update in the main NGOs storage
+    const allNGOs = JSON.parse(localStorage.getItem('sevaconnect_ngos') || '[]');
+    const updatedNGOs = allNGOs.map((ngo: any) =>
+      ngo.id === id ? { ...ngo, status: 'Verified' } : ngo
+    );
+    localStorage.setItem('sevaconnect_ngos', JSON.stringify(updatedNGOs));
+    
+    // Update user data if the NGO is currently logged in
+    const currentUser = JSON.parse(localStorage.getItem('sevaconnect_user') || 'null');
+    if (currentUser && currentUser.id === id) {
+      localStorage.setItem('sevaconnect_user', JSON.stringify({
+        ...currentUser,
+        status: 'Verified'
+      }));
     }
+    
+    console.log('NGO verified successfully');
+  };
+
+  const rejectNGO = (id: string, reason?: string) => {
+    console.log('Rejecting NGO:', id, reason);
+    
+    // Update in ngoRegistrations state
+    const updatedRegistrations = ngoRegistrations.map(ngo =>
+      ngo.id === id ? { ...ngo, status: 'Rejected' as const, rejectionReason: reason } : ngo
+    );
+    setNgoRegistrations(updatedRegistrations);
+    
+    // Also update in the main NGOs storage
+    const allNGOs = JSON.parse(localStorage.getItem('sevaconnect_ngos') || '[]');
+    const updatedNGOs = allNGOs.map((ngo: any) =>
+      ngo.id === id ? { ...ngo, status: 'Rejected', rejectionReason: reason } : ngo
+    );
+    localStorage.setItem('sevaconnect_ngos', JSON.stringify(updatedNGOs));
+    
+    // Update user data if the NGO is currently logged in
+    const currentUser = JSON.parse(localStorage.getItem('sevaconnect_user') || 'null');
+    if (currentUser && currentUser.id === id) {
+      localStorage.setItem('sevaconnect_user', JSON.stringify({
+        ...currentUser,
+        status: 'Rejected',
+        rejectionReason: reason
+      }));
+    }
+    
+    console.log('NGO rejected successfully');
+  };
+
+  const refreshData = () => {
+    console.log('Manual refresh triggered');
+    loadNGOData();
+  };
+
+  const contextValue: AdminAppContextType = {
+    ngoRegistrations,
+    verifyNGO,
+    rejectNGO,
+    refreshData
   };
 
   return (
-    <AdminAppContext.Provider value={{
-      ngoRegistrations,
-      verifyNGO,
-      rejectNGO
-    }}>
+    <AdminAppContext.Provider value={contextValue}>
       {children}
     </AdminAppContext.Provider>
   );
