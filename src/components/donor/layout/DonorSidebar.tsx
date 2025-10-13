@@ -10,7 +10,7 @@ const navigation = [
 ];
 
 export function DonorSidebar() {
-  const { donor, logout } = useDonorAuth();
+  const { donor, logout } = useDonorAuth(); // fixed alias
 
   return (
     <div className="w-64 bg-primary text-primary-foreground flex flex-col h-full">
@@ -44,7 +44,7 @@ export function DonorSidebar() {
           <p className="text-sm opacity-75">{donor?.email}</p>
         </div>
         <button
-          onClick={logout}
+          onClick={logout} // use logout alias
           className="flex items-center w-full px-4 py-2 text-left rounded-lg hover:bg-primary/80 transition-colors"
         >
           <LogOut className="h-4 w-4 mr-3" />

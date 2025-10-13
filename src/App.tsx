@@ -14,6 +14,9 @@ import { AdminAppProvider } from "@/contexts/AdminAppContext";
 import { NotificationProvider } from "@/contexts/NotificationContext";
 import { VolunteerProvider } from "@/contexts/VolunteerContext";
 
+// Common Components
+import UniversalNavbar from "@/components/layout/UniversalNavbar"; // ✅ Add your navbar here
+
 // Pages - Common
 import LandingPage from "./pages/LandingPage";
 import NotFound from "./pages/NotFound";
@@ -49,7 +52,7 @@ import AdminDashboardLayout from "@/components/admin/AdminDashboardLayout";
 
 const queryClient = new QueryClient();
 
-// Protected / Public Routes (NGO, Donor, Admin)
+// Protected / Public Routes
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
   if (isLoading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
@@ -100,6 +103,9 @@ const App = () => (
                   <AdminAppProvider>
                     <VolunteerProvider>
                       <BrowserRouter>
+                        {/* ✅ Universal Navbar visible everywhere */}
+                        <UniversalNavbar />
+
                         <Routes>
                           {/* Landing */}
                           <Route path="/" element={<LandingPage />} />

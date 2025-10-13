@@ -2,7 +2,10 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Users, CheckCircle } from 'lucide-react';
+import { Users, CheckCircle, Trash2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 
 interface Donor {
   id: string;
@@ -16,12 +19,14 @@ interface Donor {
 
 export default function AdminDonorsPage() {
   const [donors, setDonors] = useState<Donor[]>([]);
+  const [openDialog, setOpenDialog] = useState(false);
+  const [selectedDonor, setSelectedDonor] = useState<Donor | null>(null);
+  const [removeReason, setRemoveReason] = useState('');
 
   useEffect(() => {
     const loadDonors = () => {
       try {
         const registeredDonors = JSON.parse(localStorage.getItem('sevaconnect_donors') || '[]');
-        console.log('Loaded donors:', registeredDonors);
         setDonors(registeredDonors);
       } catch (error) {
         console.error('Error loading donors:', error);
@@ -31,10 +36,7 @@ export default function AdminDonorsPage() {
 
     loadDonors();
 
-    const handleStorageChange = () => {
-      loadDonors();
-    };
-
+    const handleStorageChange = () => loadDonors();
     window.addEventListener('storage', handleStorageChange);
 
     const interval = setInterval(loadDonors, 2000);
@@ -49,6 +51,27 @@ export default function AdminDonorsPage() {
     total: donors.length,
     verified: donors.filter((d) => d.isVerified).length,
     unverified: donors.filter((d) => !d.isVerified).length,
+  };
+
+  const handleRemoveClick = (donor: Donor) => {
+    setSelectedDonor(donor);
+    setRemoveReason('');
+    setOpenDialog(true);
+  };
+
+  const confirmRemoveDonor = () => {
+    if (!selectedDonor) return;
+
+    const updatedDonors = donors.filter((d) => d.id !== selectedDonor.id);
+    localStorage.setItem('sevaconnect_donors', JSON.stringify(updatedDonors));
+
+    // Optionally, you could log the reason somewhere or send to backend
+    console.log(`Removed donor: ${selectedDonor.name}, Reason: ${removeReason}`);
+
+    setDonors(updatedDonors);
+    setSelectedDonor(null);
+    setRemoveReason('');
+    setOpenDialog(false);
   };
 
   return (
@@ -137,14 +160,19 @@ export default function AdminDonorsPage() {
                       <TableCell>{donor.email}</TableCell>
                       <TableCell>{donor.phone}</TableCell>
                       <TableCell>{donor.address || 'Not provided'}</TableCell>
-                      <TableCell>
-                        {new Date(donor.registeredAt).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>
-                        <Badge className="bg-green-100 text-green-800 border-green-200">
+                      <TableCell>{new Date(donor.registeredAt).toLocaleDateString()}</TableCell>
+                      <TableCell className="flex items-center gap-2">
+                        <Badge className="bg-green-100 text-green-800 border-green-200 flex items-center">
                           <CheckCircle className="h-3 w-3 mr-1" />
                           Verified
                         </Badge>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => handleRemoveClick(donor)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" /> Remove
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -154,6 +182,34 @@ export default function AdminDonorsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Remove Donor Dialog */}
+      <Dialog open={openDialog} onOpenChange={setOpenDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove Donor</DialogTitle>
+            <DialogDescription>
+              Please provide a reason for removing {selectedDonor?.name}.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            placeholder="Reason for removal"
+            value={removeReason}
+            onChange={(e) => setRemoveReason(e.target.value)}
+            className="mb-4"
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpenDialog(false)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              onClick={confirmRemoveDonor}
+              disabled={!removeReason.trim()}
+            >
+              Remove Donor
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Info Card */}
       <Card className="bg-blue-50 border-blue-200">
