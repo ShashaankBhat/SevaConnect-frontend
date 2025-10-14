@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect } from "react";
 
 export interface NGO {
   id: string;
@@ -9,7 +9,7 @@ export interface NGO {
   needs: string[];
   contact: string;
   category: string;
-  status?: string;
+  status: string;
   memberCount?: string;
   establishedDate?: string;
   description?: string;
@@ -21,89 +21,38 @@ export interface Donation {
   id: string;
   ngoId: string;
   ngoName: string;
+  donorName: string;
   item: string;
   quantity: number;
   notes: string;
-  status: 'Pending' | 'Confirmed' | 'Delivered';
+  status: "Pending" | "Confirmed" | "Received";
   date: string;
-}
-
-export interface VolunteerBooking {
-  id: string;
-  ngoId: string;
-  ngoName: string;
-  pickupAddress: string;
-  dropAddress: string;
-  date: string;
-  time: string;
-  status: 'Scheduled' | 'In Progress' | 'Completed';
 }
 
 interface DonorAppContextType {
   ngos: NGO[];
   donations: Donation[];
-  volunteerBookings: VolunteerBooking[];
-  addDonation: (donation: Omit<Donation, 'id' | 'date'>) => void;
-  updateDonationStatus: (id: string, status: Donation['status']) => void;
-  addVolunteerBooking: (booking: Omit<VolunteerBooking, 'id' | 'status'>) => void;
+  addDonation: (donation: Omit<Donation, "id" | "status" | "date">) => void;
+  updateDonationStatus: (id: string, status: Donation["status"]) => void;
 }
 
 const DonorAppContext = createContext<DonorAppContextType | undefined>(undefined);
 
 export function DonorAppProvider({ children }: { children: React.ReactNode }) {
   const [ngos, setNgos] = useState<NGO[]>([]);
-  const [donations, setDonations] = useState<Donation[]>([
-    {
-      id: '1',
-      ngoId: '1',
-      ngoName: 'Food for All Foundation',
-      item: 'Rice',
-      quantity: 10,
-      notes: 'High quality basmati rice',
-      status: 'Pending',
-      date: '2024-01-15'
-    },
-    {
-      id: '2',
-      ngoId: '2',
-      ngoName: 'Cloth Care Society',
-      item: 'Winter Jackets',
-      quantity: 5,
-      notes: 'Brand new winter jackets for children',
-      status: 'Confirmed',
-      date: '2024-01-10'
-    }
-  ]);
-  
-  const [volunteerBookings, setVolunteerBookings] = useState<VolunteerBooking[]>([]);
+  const [donations, setDonations] = useState<Donation[]>([]);
 
-  // Fetch approved NGOs from MongoDB
-  useEffect(() => {
-    const fetchNGOs = async () => {
-      try {
-        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ngo-operations`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({ action: 'fetchApproved' }),
-        });
-
-        const data = await response.json();
-
-        if (data.error) {
-          console.error('Error fetching NGOs:', data.error);
-          return;
-        }
-
-        // Map MongoDB NGOs to frontend format
-        const mappedNGOs: NGO[] = data.map((ngo: any, index: number) => ({
-          id: ngo._id,
+  const fetchNGOs = () => {
+    try {
+      const allNGOs: any[] = JSON.parse(localStorage.getItem("sevaconnect_ngos") || "[]");
+      const verifiedNGOs: NGO[] = allNGOs
+        .filter((ngo) => ngo.status === "Verified")
+        .map((ngo, index) => ({
+          id: ngo.id,
           name: ngo.name,
           address: ngo.address,
-          lat: 19.0760 + (index * 0.5),
-          lng: 72.8777 + (index * 0.5),
+          lat: 19.076 + 0.001 * index,
+          lng: 72.8777 + 0.001 * index,
           needs: ngo.documents?.needs || [],
           contact: ngo.contact,
           category: ngo.category,
@@ -114,118 +63,59 @@ export function DonorAppProvider({ children }: { children: React.ReactNode }) {
           paymentUpiId: ngo.documents?.payment_upi_id,
           paymentQrCode: ngo.documents?.payment_qr_code_url,
         }));
-        setNgos(mappedNGOs);
-      } catch (error) {
-        console.error('Error fetching NGOs:', error);
-      }
-    };
-
-    fetchNGOs();
-
-    // Poll for updates every 30 seconds (replaces real-time)
-    const interval = setInterval(fetchNGOs, 30000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const addDonation = (donation: Omit<Donation, 'id' | 'date'>) => {
-    const newDonation: Donation = {
-      ...donation,
-      id: Date.now().toString(),
-      date: new Date().toISOString().split('T')[0],
-      status: 'Pending'
-    };
-    setDonations(prev => [...prev, newDonation]);
-  };
-
-  const updateDonationStatus = (id: string, status: Donation['status']) => {
-    setDonations(prev => 
-      prev.map(donation => 
-        donation.id === id ? { ...donation, status } : donation
-      )
-    );
-  };
-
-  const addVolunteerBooking = async (booking: Omit<VolunteerBooking, 'id' | 'status'>) => {
-    try {
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/volunteer-operations`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
-        body: JSON.stringify({
-          action: 'create',
-          data: {
-            ngo_name: booking.ngoName,
-            donor_name: 'Donor', // This should come from donor context
-            pickup_address: booking.pickupAddress,
-            drop_address: booking.dropAddress,
-            scheduled_date: `${booking.date} ${booking.time}`,
-          }
-        }),
-      });
-
-      const data = await response.json();
-      
-      if (data._id) {
-        const newBooking: VolunteerBooking = {
-          id: data._id,
-          ...booking,
-          status: 'Scheduled'
-        };
-        setVolunteerBookings(prev => [...prev, newBooking]);
-      }
+      setNgos(verifiedNGOs);
     } catch (error) {
-      console.error('Error creating volunteer booking:', error);
+      console.error(error);
+      setNgos([]);
     }
   };
 
-  // Fetch volunteer bookings
+  const fetchDonations = () => {
+    try {
+      const saved: Donation[] = JSON.parse(localStorage.getItem("sevaconnect_donations") || "[]");
+      setDonations(saved);
+    } catch (error) {
+      console.error(error);
+      setDonations([]);
+    }
+  };
+
   useEffect(() => {
-    const fetchVolunteerBookings = async () => {
-      try {
-        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/volunteer-operations`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({ action: 'fetchAll' }),
-        });
-
-        const data = await response.json();
-        
-        if (!data.error && Array.isArray(data)) {
-          const mappedBookings: VolunteerBooking[] = data.map((booking: any) => ({
-            id: booking._id,
-            ngoId: '', // Not stored in current schema
-            ngoName: booking.ngo_name,
-            pickupAddress: booking.pickup_address,
-            dropAddress: booking.drop_address,
-            date: booking.scheduled_date?.split(' ')[0] || '',
-            time: booking.scheduled_date?.split(' ')[1] || '',
-            status: booking.status as any
-          }));
-          setVolunteerBookings(mappedBookings);
-        }
-      } catch (error) {
-        console.error('Error fetching volunteer bookings:', error);
-      }
-    };
-
-    fetchVolunteerBookings();
+    fetchNGOs();
+    fetchDonations();
+    const interval = setInterval(() => {
+      fetchNGOs();
+      fetchDonations();
+    }, 30000);
+    return () => clearInterval(interval);
   }, []);
 
+  const saveDonations = (donations: Donation[]) => {
+    localStorage.setItem("sevaconnect_donations", JSON.stringify(donations));
+  };
+
+  const addDonation = (donation: Omit<Donation, "id" | "status" | "date">) => {
+    if (!donation.donorName) throw new Error("donorName is required");
+
+    const newDonation: Donation = {
+      ...donation,
+      id: Date.now().toString(),
+      status: "Pending",
+      date: new Date().toISOString(),
+    };
+    const updated = [...donations, newDonation];
+    setDonations(updated);
+    saveDonations(updated);
+  };
+
+  const updateDonationStatus = (id: string, status: Donation["status"]) => {
+    const updated = donations.map((d) => (d.id === id ? { ...d, status } : d));
+    setDonations(updated);
+    saveDonations(updated);
+  };
+
   return (
-    <DonorAppContext.Provider value={{
-      ngos,
-      donations,
-      volunteerBookings,
-      addDonation,
-      updateDonationStatus,
-      addVolunteerBooking
-    }}>
+    <DonorAppContext.Provider value={{ ngos, donations, addDonation, updateDonationStatus }}>
       {children}
     </DonorAppContext.Provider>
   );
@@ -233,8 +123,6 @@ export function DonorAppProvider({ children }: { children: React.ReactNode }) {
 
 export function useDonorApp() {
   const context = useContext(DonorAppContext);
-  if (context === undefined) {
-    throw new Error('useDonorApp must be used within a DonorAppProvider');
-  }
+  if (!context) throw new Error("useDonorApp must be used within DonorAppProvider");
   return context;
 }

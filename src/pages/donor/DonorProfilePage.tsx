@@ -164,27 +164,6 @@ export function DonorProfilePage() {
           </div>
         </CardContent>
       </Card>
-
-      {/* Account Status */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Account Status</CardTitle>
-          <CardDescription>Your account verification and status</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Email Verification</p>
-              <p className="text-sm text-muted-foreground">
-                Your email address has been verified
-              </p>
-            </div>
-            <Badge variant={donor.isVerified ? "default" : "secondary"}>
-              {donor.isVerified ? "Verified" : "Pending"}
-            </Badge>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
