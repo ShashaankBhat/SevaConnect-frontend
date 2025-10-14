@@ -7,12 +7,14 @@ import {
   Warehouse, 
   AlertTriangle,
   LogOut,
-  Building2
+  Building2,
+  User
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApp } from '@/contexts/AppContext';
 
 const navigation = [
+  { name: 'Profile', href: '/dashboard/profile', icon: User },           // Added Profile
   { name: 'Update Needs', href: '/dashboard/needs', icon: Package },
   { name: 'View Donations', href: '/dashboard/donations', icon: Gift },
   { name: 'Manage Inventory', href: '/dashboard/inventory', icon: Warehouse },

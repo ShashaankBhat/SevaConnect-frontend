@@ -4,14 +4,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CheckCircle, Calendar, Clock, MapPin } from 'lucide-react';
+import { CheckCircle, Calendar, MapPin } from 'lucide-react';
 import { useDonorApp } from '@/contexts/DonorAppContext';
 import { useDonorAuth } from '@/contexts/DonorAuthContext';
 import { toast } from '@/hooks/use-toast';
 
 export function BookVolunteerPage() {
-  const { ngos, addVolunteerBooking, volunteerBookings } = useDonorApp();
+  const { ngos, addVolunteerBooking, volunteerBookings = [] } = useDonorApp(); // ✅ Added default empty array
   const { donor } = useDonorAuth();
+
   const [selectedNGO, setSelectedNGO] = useState('');
   const [formData, setFormData] = useState({
     pickupAddress: donor?.address || '',
@@ -29,7 +30,7 @@ export function BookVolunteerPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!selectedNGO || !formData.pickupAddress || !formData.date || !formData.time) {
       toast({
         title: "Error",
@@ -92,8 +93,8 @@ export function BookVolunteerPage() {
         </p>
       </div>
 
-      {/* Current Bookings */}
-      {volunteerBookings.length > 0 && (
+      {/* ✅ Fixed crash: Added safe check */}
+      {Array.isArray(volunteerBookings) && volunteerBookings.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Upcoming Pickups</CardTitle>
@@ -115,7 +116,7 @@ export function BookVolunteerPage() {
                     </p>
                   </div>
                   <span className="text-sm px-2 py-1 bg-blue-100 text-blue-800 rounded">
-                    {booking.status}
+                    {booking.status || 'Pending'}
                   </span>
                 </div>
               ))}

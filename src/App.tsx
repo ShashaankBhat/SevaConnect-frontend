@@ -15,7 +15,7 @@ import { NotificationProvider } from "@/contexts/NotificationContext";
 import { VolunteerProvider } from "@/contexts/VolunteerContext";
 
 // Common Components
-import UniversalNavbar from "@/components/layout/UniversalNavbar"; // ✅ Add your navbar here
+import UniversalNavbar from "@/components/layout/UniversalNavbar";
 
 // Pages - Common
 import LandingPage from "./pages/LandingPage";
@@ -28,6 +28,7 @@ import DonationsPage from "./pages/DonationsPage";
 import InventoryPage from "./pages/InventoryPage";
 import AlertsPage from "./pages/AlertsPage";
 import NGOAboutPage from "./pages/NGOAboutPage";
+import { NGOProfilePage } from "./pages/NGOProfilePage";
 
 // Donor Pages
 import { DonorAuthPage } from "@/pages/donor/DonorAuthPage";
@@ -35,6 +36,7 @@ import { BrowseNGOsPage } from "@/pages/donor/BrowseNGOsPage";
 import { MyDonationsPage } from "@/pages/donor/MyDonationsPage";
 import { DonorProfilePage } from "@/pages/donor/DonorProfilePage";
 import { BookVolunteerPage } from "@/pages/donor/BookVolunteerPage";
+import NGOAboutViewPage from "./pages/donor/NGOAboutViewPage";
 
 // Admin Pages
 import AdminAuthPage from "@/pages/admin/AdminAuthPage";
@@ -103,7 +105,6 @@ const App = () => (
                   <AdminAppProvider>
                     <VolunteerProvider>
                       <BrowserRouter>
-                        {/* ✅ Universal Navbar visible everywhere */}
                         <UniversalNavbar />
 
                         <Routes>
@@ -114,6 +115,7 @@ const App = () => (
                           <Route path="/auth" element={<PublicRoute><AuthPage /></PublicRoute>} />
                           <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
                             <Route index element={<Navigate to="/dashboard/needs" replace />} />
+                            <Route path="profile" element={<NGOProfilePage />} />
                             <Route path="needs" element={<NeedsPage />} />
                             <Route path="donations" element={<DonationsPage />} />
                             <Route path="inventory" element={<InventoryPage />} />
@@ -129,6 +131,7 @@ const App = () => (
                             <Route path="donations" element={<MyDonationsPage />} />
                             <Route path="profile" element={<DonorProfilePage />} />
                             <Route path="volunteer" element={<BookVolunteerPage />} />
+                            <Route path="ngo/:id/about" element={<NGOAboutViewPage />} />
                           </Route>
 
                           {/* Admin Routes */}

@@ -21,6 +21,7 @@ interface NGORegistration extends NGOUser {
 
 interface AuthContextType {
   user: NGOUser | null;
+  setUser?: React.Dispatch<React.SetStateAction<NGOUser | null>>; // ✅ added setUser
   login: (email: string, password: string) => Promise<boolean>;
   register: (
     ngoData: Omit<NGORegistration, 'id' | 'status' | 'rejectionReason' | 'submittedAt'>
@@ -102,7 +103,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(userToStore);
       localStorage.setItem('sevaconnect_user', JSON.stringify(userToStore));
 
-      // Notification for admin
       addNotification({
         type: 'new_ngo',
         title: 'New NGO Registration',
@@ -126,7 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, setUser, login, register, logout, isLoading }}> 
       {children}
     </AuthContext.Provider>
   );

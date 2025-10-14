@@ -13,7 +13,6 @@ interface AboutData {
   establishedDate: string;
   description: string;
   paymentUpiId: string;
-  paymentQrCode: string;
 }
 
 export default function NGOAboutPage() {
@@ -24,8 +23,7 @@ export default function NGOAboutPage() {
     memberCount: '',
     establishedDate: '',
     description: '',
-    paymentUpiId: '',
-    paymentQrCode: ''
+    paymentUpiId: ''
   });
 
   useEffect(() => {
@@ -155,30 +153,6 @@ export default function NGOAboutPage() {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="paymentQrCode">Payment QR Code URL</Label>
-              <Input
-                id="paymentQrCode"
-                placeholder="https://example.com/qr-code.png"
-                value={aboutData.paymentQrCode}
-                onChange={(e) => setAboutData({ ...aboutData, paymentQrCode: e.target.value })}
-                disabled={!isEditing}
-              />
-              {aboutData.paymentQrCode && (
-                <div className="mt-4 p-4 border rounded-lg">
-                  <p className="text-sm font-medium mb-2">QR Code Preview:</p>
-                  <img
-                    src={aboutData.paymentQrCode}
-                    alt="Payment QR Code"
-                    className="max-w-[200px] mx-auto"
-                    onError={(e) => {
-                      e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2YzZjRmNiIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5Y2EzYWYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5JbnZhbGlkIEltYWdlPC90ZXh0Pjwvc3ZnPg==';
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-
             {!isEditing && aboutData.paymentUpiId && (
               <div className="p-4 bg-muted rounded-lg">
                 <p className="text-sm font-medium mb-2">Donors can pay using:</p>
@@ -188,46 +162,6 @@ export default function NGOAboutPage() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Preview Card */}
-      {!isEditing && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Public Profile Preview</CardTitle>
-            <CardDescription>
-              This is how donors will see your NGO information
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid md:grid-cols-3 gap-4">
-              <div className="p-4 border rounded-lg">
-                <p className="text-sm text-muted-foreground">Members</p>
-                <p className="text-2xl font-bold">{aboutData.memberCount || '—'}</p>
-              </div>
-              <div className="p-4 border rounded-lg">
-                <p className="text-sm text-muted-foreground">Established</p>
-                <p className="text-2xl font-bold">
-                  {aboutData.establishedDate
-                    ? new Date(aboutData.establishedDate).getFullYear()
-                    : '—'}
-                </p>
-              </div>
-              <div className="p-4 border rounded-lg">
-                <p className="text-sm text-muted-foreground">Payment Status</p>
-                <p className="text-2xl font-bold">
-                  {aboutData.paymentUpiId ? '✓' : '—'}
-                </p>
-              </div>
-            </div>
-            {aboutData.description && (
-              <div>
-                <p className="text-sm font-medium mb-2">About:</p>
-                <p className="text-muted-foreground">{aboutData.description}</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

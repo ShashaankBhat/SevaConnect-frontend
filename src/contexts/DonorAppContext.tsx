@@ -29,11 +29,25 @@ export interface Donation {
   date: string;
 }
 
+export interface VolunteerBooking {
+  id: string;
+  ngoId: string;
+  ngoName: string;
+  pickupAddress: string;
+  dropAddress: string;
+  date: string;
+  time: string;
+  status: "Scheduled" | "Completed" | "Cancelled";
+}
+
 interface DonorAppContextType {
   ngos: NGO[];
   donations: Donation[];
+  volunteerBookings: VolunteerBooking[];
   addDonation: (donation: Omit<Donation, "id" | "status" | "date">) => void;
   updateDonationStatus: (id: string, status: Donation["status"]) => void;
+  addVolunteerBooking: (booking: Omit<VolunteerBooking, "id" | "status">) => void;
+  updateVolunteerStatus: (id: string, status: VolunteerBooking["status"]) => void;
 }
 
 const DonorAppContext = createContext<DonorAppContextType | undefined>(undefined);
@@ -41,6 +55,7 @@ const DonorAppContext = createContext<DonorAppContextType | undefined>(undefined
 export function DonorAppProvider({ children }: { children: React.ReactNode }) {
   const [ngos, setNgos] = useState<NGO[]>([]);
   const [donations, setDonations] = useState<Donation[]>([]);
+  const [volunteerBookings, setVolunteerBookings] = useState<VolunteerBooking[]>([]);
 
   const fetchNGOs = () => {
     try {
@@ -80,23 +95,39 @@ export function DonorAppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const fetchVolunteerBookings = () => {
+    try {
+      const saved: VolunteerBooking[] = JSON.parse(
+        localStorage.getItem("sevaconnect_volunteer_bookings") || "[]"
+      );
+      setVolunteerBookings(saved);
+    } catch (error) {
+      console.error(error);
+      setVolunteerBookings([]);
+    }
+  };
+
   useEffect(() => {
     fetchNGOs();
     fetchDonations();
+    fetchVolunteerBookings();
+
     const interval = setInterval(() => {
       fetchNGOs();
       fetchDonations();
+      fetchVolunteerBookings();
     }, 30000);
+
     return () => clearInterval(interval);
   }, []);
 
-  const saveDonations = (donations: Donation[]) => {
-    localStorage.setItem("sevaconnect_donations", JSON.stringify(donations));
-  };
+  const saveDonations = (data: Donation[]) =>
+    localStorage.setItem("sevaconnect_donations", JSON.stringify(data));
+
+  const saveVolunteerBookings = (data: VolunteerBooking[]) =>
+    localStorage.setItem("sevaconnect_volunteer_bookings", JSON.stringify(data));
 
   const addDonation = (donation: Omit<Donation, "id" | "status" | "date">) => {
-    if (!donation.donorName) throw new Error("donorName is required");
-
     const newDonation: Donation = {
       ...donation,
       id: Date.now().toString(),
@@ -114,8 +145,35 @@ export function DonorAppProvider({ children }: { children: React.ReactNode }) {
     saveDonations(updated);
   };
 
+  const addVolunteerBooking = (booking: Omit<VolunteerBooking, "id" | "status">) => {
+    const newBooking: VolunteerBooking = {
+      ...booking,
+      id: Date.now().toString(),
+      status: "Scheduled",
+    };
+    const updated = [...volunteerBookings, newBooking];
+    setVolunteerBookings(updated);
+    saveVolunteerBookings(updated);
+  };
+
+  const updateVolunteerStatus = (id: string, status: VolunteerBooking["status"]) => {
+    const updated = volunteerBookings.map((b) => (b.id === id ? { ...b, status } : b));
+    setVolunteerBookings(updated);
+    saveVolunteerBookings(updated);
+  };
+
   return (
-    <DonorAppContext.Provider value={{ ngos, donations, addDonation, updateDonationStatus }}>
+    <DonorAppContext.Provider
+      value={{
+        ngos,
+        donations,
+        volunteerBookings,
+        addDonation,
+        updateDonationStatus,
+        addVolunteerBooking,
+        updateVolunteerStatus,
+      }}
+    >
       {children}
     </DonorAppContext.Provider>
   );
