@@ -1,12 +1,15 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface Need {
   id: string;
+  ngoId: string; // NGO that created this need
   itemName: string;
   category: string;
   quantity: number;
   urgency: 'High' | 'Medium' | 'Low';
-  expiryDate: string;
+  description?: string;
+  expiryDate?: string;
   createdAt: string;
 }
 
@@ -41,8 +44,8 @@ interface AppContextType {
   donations: Donation[];
   inventory: InventoryItem[];
   alerts: Alert[];
-  addNeed: (need: Omit<Need, 'id' | 'createdAt'>) => void;
-  updateNeed: (id: string, need: Partial<Need>) => void;
+  addNeed: (ngoId: string, need: Omit<Need, 'id' | 'createdAt' | 'ngoId'>) => void;
+  updateNeed: (id: string, need: Partial<Omit<Need, 'id' | 'ngoId' | 'createdAt'>>) => void;
   deleteNeed: (id: string) => void;
   addInventoryItem: (item: Omit<InventoryItem, 'id' | 'addedAt'>) => void;
   updateInventoryItem: (id: string, item: Partial<InventoryItem>) => void;
@@ -55,83 +58,46 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth(); // Logged-in NGO info
+
   const [needs, setNeeds] = useState<Need[]>([]);
   const [donations, setDonations] = useState<Donation[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
 
-  // Initialize with mock data
+  // Load data from localStorage safely
   useEffect(() => {
-    const mockDonations: Donation[] = [
-      {
-        id: '1',
-        donorName: 'John Smith',
-        item: 'Rice Bags',
-        quantity: 50,
-        status: 'Pending',
-        donatedAt: new Date().toISOString(),
-      },
-      {
-        id: '2',
-        donorName: 'Green Foundation',
-        item: 'Medical Supplies',
-        quantity: 100,
-        status: 'Confirmed',
-        donatedAt: new Date(Date.now() - 86400000).toISOString(),
-      },
-      {
-        id: '3',
-        donorName: 'Local Community',
-        item: 'Blankets',
-        quantity: 25,
-        status: 'Received',
-        donatedAt: new Date(Date.now() - 172800000).toISOString(),
-      },
-      {
-        id: '4',
-        donorName: 'City Hospital',
-        item: 'First Aid Kits',
-        quantity: 15,
-        status: 'Pending',
-        donatedAt: new Date(Date.now() - 43200000).toISOString(),
-      },
-      {
-        id: '5',
-        donorName: 'School District',
-        item: 'Books & Stationery',
-        quantity: 200,
-        status: 'Received',
-        donatedAt: new Date(Date.now() - 259200000).toISOString(),
-      },
-    ];
-
-    const mockInventory: InventoryItem[] = [
-      {
-        id: '1',
-        name: 'Blankets',
-        category: 'Clothing',
-        quantity: 25,
-        addedAt: new Date(Date.now() - 172800000).toISOString(),
-      },
-      {
-        id: '2',
-        name: 'Canned Food',
-        category: 'Food',
-        quantity: 3,
-        expiryDate: new Date(Date.now() + 86400000 * 5).toISOString(),
-        addedAt: new Date(Date.now() - 432000000).toISOString(),
-      },
-    ];
-
-    setDonations(mockDonations);
-    setInventory(mockInventory);
+    try {
+      const savedNeeds = JSON.parse(localStorage.getItem('sevaconnect_needs') || '[]');
+      const savedDonations = JSON.parse(localStorage.getItem('sevaconnect_donations') || '[]');
+      const savedInventory = JSON.parse(localStorage.getItem('sevaconnect_inventory') || '[]');
+      setNeeds(Array.isArray(savedNeeds) ? savedNeeds : []);
+      setDonations(Array.isArray(savedDonations) ? savedDonations : []);
+      setInventory(Array.isArray(savedInventory) ? savedInventory : []);
+    } catch {
+      setNeeds([]);
+      setDonations([]);
+      setInventory([]);
+    }
   }, []);
 
-  // Check for alerts
+  // Persist updates to localStorage
+  useEffect(() => {
+    localStorage.setItem('sevaconnect_needs', JSON.stringify(needs));
+  }, [needs]);
+
+  useEffect(() => {
+    localStorage.setItem('sevaconnect_donations', JSON.stringify(donations));
+  }, [donations]);
+
+  useEffect(() => {
+    localStorage.setItem('sevaconnect_inventory', JSON.stringify(inventory));
+  }, [inventory]);
+
+  // Auto-generate alerts based on conditions
   useEffect(() => {
     const newAlerts: Alert[] = [];
-    
-    // Check for low stock items
+
     inventory.forEach(item => {
       if (item.quantity < 5) {
         newAlerts.push({
@@ -142,15 +108,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           isRead: false,
         });
       }
-    });
 
-    // Check for expiring items
-    inventory.forEach(item => {
       if (item.expiryDate) {
         const expiryDate = new Date(item.expiryDate);
-        const sevenDaysFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-        
-        if (expiryDate <= sevenDaysFromNow) {
+        const soon = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        if (expiryDate <= soon) {
           newAlerts.push({
             id: `expiry-${item.id}`,
             type: 'Expiry',
@@ -162,7 +124,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    // Check for new donations
     donations.forEach(donation => {
       if (donation.status === 'Pending') {
         newAlerts.push({
@@ -178,25 +139,26 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setAlerts(newAlerts);
   }, [inventory, donations]);
 
-  const addNeed = (need: Omit<Need, 'id' | 'createdAt'>) => {
+  // --- CRUD operations for Needs ---
+  const addNeed = (ngoId: string, need: Omit<Need, 'id' | 'createdAt' | 'ngoId'>) => {
     const newNeed: Need = {
       ...need,
       id: Date.now().toString(),
+      ngoId,
       createdAt: new Date().toISOString(),
     };
     setNeeds(prev => [...prev, newNeed]);
   };
 
-  const updateNeed = (id: string, updatedNeed: Partial<Need>) => {
-    setNeeds(prev => prev.map(need => 
-      need.id === id ? { ...need, ...updatedNeed } : need
-    ));
+  const updateNeed = (id: string, updatedNeed: Partial<Omit<Need, 'id' | 'ngoId' | 'createdAt'>>) => {
+    setNeeds(prev => prev.map(n => (n.id === id ? { ...n, ...updatedNeed } : n)));
   };
 
   const deleteNeed = (id: string) => {
-    setNeeds(prev => prev.filter(need => need.id !== id));
+    setNeeds(prev => prev.filter(n => n.id !== id));
   };
 
+  // --- Inventory management ---
   const addInventoryItem = (item: Omit<InventoryItem, 'id' | 'addedAt'>) => {
     const newItem: InventoryItem = {
       ...item,
@@ -207,60 +169,57 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateInventoryItem = (id: string, updatedItem: Partial<InventoryItem>) => {
-    setInventory(prev => prev.map(item => 
-      item.id === id ? { ...item, ...updatedItem } : item
-    ));
+    setInventory(prev => prev.map(item => (item.id === id ? { ...item, ...updatedItem } : item)));
   };
 
   const deleteInventoryItem = (id: string) => {
     setInventory(prev => prev.filter(item => item.id !== id));
   };
 
+  // --- Donations and alerts ---
   const confirmDonation = (donationId: string) => {
-    setDonations(prev => prev.map(donation => {
-      if (donation.id === donationId && donation.status === 'Pending') {
-        // Add to inventory
-        const newInventoryItem: InventoryItem = {
-          id: Date.now().toString(),
-          name: donation.item,
-          category: 'Donated Items',
-          quantity: donation.quantity,
-          addedAt: new Date().toISOString(),
-        };
-        setInventory(prevInventory => [...prevInventory, newInventoryItem]);
-        
-        return { ...donation, status: 'Received' as const };
-      }
-      return donation;
-    }));
+    setDonations(prev =>
+      prev.map(donation => {
+        if (donation.id === donationId && donation.status === 'Pending') {
+          const newItem: InventoryItem = {
+            id: Date.now().toString(),
+            name: donation.item,
+            category: 'Donated Items',
+            quantity: donation.quantity,
+            addedAt: new Date().toISOString(),
+          };
+          setInventory(prevInv => [...prevInv, newItem]);
+          return { ...donation, status: 'Received' };
+        }
+        return donation;
+      })
+    );
   };
 
   const markAlertAsRead = (alertId: string) => {
-    setAlerts(prev => prev.map(alert => 
-      alert.id === alertId ? { ...alert, isRead: true } : alert
-    ));
+    setAlerts(prev => prev.map(a => (a.id === alertId ? { ...a, isRead: true } : a)));
   };
 
-  const getUnreadAlerts = () => {
-    return alerts.filter(alert => !alert.isRead);
-  };
+  const getUnreadAlerts = () => alerts.filter(a => !a.isRead);
 
   return (
-    <AppContext.Provider value={{
-      needs,
-      donations,
-      inventory,
-      alerts,
-      addNeed,
-      updateNeed,
-      deleteNeed,
-      addInventoryItem,
-      updateInventoryItem,
-      deleteInventoryItem,
-      confirmDonation,
-      markAlertAsRead,
-      getUnreadAlerts,
-    }}>
+    <AppContext.Provider
+      value={{
+        needs,
+        donations,
+        inventory,
+        alerts,
+        addNeed,
+        updateNeed,
+        deleteNeed,
+        addInventoryItem,
+        updateInventoryItem,
+        deleteInventoryItem,
+        confirmDonation,
+        markAlertAsRead,
+        getUnreadAlerts,
+      }}
+    >
       {children}
     </AppContext.Provider>
   );
@@ -268,8 +227,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
 export function useApp() {
   const context = useContext(AppContext);
-  if (context === undefined) {
-    throw new Error('useApp must be used within an AppProvider');
-  }
+  if (!context) throw new Error('useApp must be used within AppProvider');
   return context;
 }

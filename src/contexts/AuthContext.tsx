@@ -1,7 +1,7 @@
 ﻿import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useNotifications } from '@/contexts/NotificationContext';
 
-interface NGOUser {
+export interface NGOUser {
   id: string;
   name: string;
   email: string;
@@ -9,19 +9,19 @@ interface NGOUser {
   address: string;
   category: string;
   description: string;
-  documents?: string[];
+  documents: string[];
   status: 'Pending' | 'Verified' | 'Rejected';
   rejectionReason?: string;
   submittedAt: string;
 }
 
-interface NGORegistration extends NGOUser {
+export interface NGORegistration extends NGOUser {
   password: string;
 }
 
 interface AuthContextType {
   user: NGOUser | null;
-  setUser?: React.Dispatch<React.SetStateAction<NGOUser | null>>; // ✅ added setUser
+  setUser: React.Dispatch<React.SetStateAction<NGOUser | null>>;
   login: (email: string, password: string) => Promise<boolean>;
   register: (
     ngoData: Omit<NGORegistration, 'id' | 'status' | 'rejectionReason' | 'submittedAt'>
@@ -62,7 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (ngo) {
         const { password: _, ...userData } = ngo;
-        setUser(userData);
+        setUser({ ...userData, documents: ngo.documents || [] });
         localStorage.setItem('sevaconnect_user', JSON.stringify(userData));
         setIsLoading(false);
         return true;
@@ -94,6 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         id: 'ngo-' + Date.now().toString(),
         status: 'Pending',
         submittedAt: new Date().toISOString(),
+        documents: ngoData.documents || [],
       };
 
       registeredNGOs.push(newNGO);
@@ -126,7 +127,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, setUser, login, register, logout, isLoading }}> 
+    <AuthContext.Provider value={{ user, setUser, login, register, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Phone } from "lucide-react";
 import { useDonorApp, type NGO } from "@/contexts/DonorAppContext";
+import { useApp, type Need } from "@/contexts/AppContext";
 
 const containerStyle = { width: "100%", height: "500px" };
 const defaultCenter = { lat: 20.0004, lng: 75.2245 };
@@ -80,8 +81,86 @@ function DonationForm({ ngo, onBack, onSubmit }: DonationFormProps) {
   );
 }
 
+// Subcomponent for displaying NGO Needs
+function NGOCardNeeds({ ngoNeeds }: { ngoNeeds: Need[] }) {
+  const [showAll, setShowAll] = useState(false);
+
+  const urgencyOrder = { High: 1, Medium: 2, Low: 3 };
+  const sortedNeeds = [...ngoNeeds].sort(
+    (a, b) => urgencyOrder[a.urgency] - urgencyOrder[b.urgency]
+  );
+
+  const displayedNeeds = showAll ? sortedNeeds : sortedNeeds.slice(0, 3);
+
+  return (
+    <div className="pt-2">
+      <p className="text-sm font-medium text-gray-800 mb-2">Needs:</p>
+
+      {ngoNeeds.length === 0 ? (
+        <span className="text-xs text-muted-foreground">No needs currently</span>
+      ) : (
+        <>
+          <div className="space-y-3">
+            {displayedNeeds.map((need) => (
+              <div
+                key={need.id}
+                className="border rounded-lg p-3 bg-gray-50 hover:bg-gray-100 transition"
+              >
+                <div className="flex justify-between items-center mb-1">
+                  <span className="font-medium text-gray-800 text-sm">
+                    {need.itemName} ({need.quantity})
+                  </span>
+                  <Badge
+                    variant={
+                      need.urgency === "High"
+                        ? "destructive"
+                        : need.urgency === "Medium"
+                        ? "default"
+                        : "secondary"
+                    }
+                    className="text-xs"
+                  >
+                    {need.urgency} Priority
+                  </Badge>
+                </div>
+                {need.category && (
+                  <p className="text-xs text-gray-600 mb-1">
+                    Category: <span className="font-medium">{need.category}</span>
+                  </p>
+                )}
+                {need.description && (
+                  <p className="text-xs text-gray-600 mb-1">{need.description}</p>
+                )}
+                {need.expiryDate && (
+                  <p className="text-xs text-gray-500 italic">
+                    Needed by: {new Date(need.expiryDate).toLocaleDateString()}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {ngoNeeds.length > 3 && (
+            <div className="flex justify-center mt-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAll(!showAll)}
+              >
+                {showAll ? "Show Less" : `View All Needs (${ngoNeeds.length})`}
+              </Button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 export function BrowseNGOsPage() {
   const { ngos, addDonation } = useDonorApp();
+  const { needs } = useApp();
+
   const navigate = useNavigate();
   const [selectedNGO, setSelectedNGO] = useState<NGO | null>(null);
   const [showDonationForm, setShowDonationForm] = useState(false);
@@ -254,48 +333,53 @@ export function BrowseNGOsPage() {
         </div>
 
         <div className="grid sm:grid-cols-1 md:grid-cols-1 lg:grid-cols-1 gap-4">
-          {filteredNGOs.map((ngo) => (
-            <Card key={ngo.id} className="border shadow-md hover:shadow-xl transition-shadow duration-300 rounded-2xl overflow-hidden">
-              <CardHeader className="bg-gray-50 border-b">
-                <CardTitle className="flex justify-between items-center text-lg font-semibold">
-                  <span>{ngo.name}</span>
-                  <Badge variant="outline" className="text-xs px-2 py-1 bg-blue-50 text-blue-600 border-blue-300">
-                    {ngo.category}
-                  </Badge>
-                </CardTitle>
-                <CardDescription className="flex items-center gap-2 text-sm mt-1">
-                  <Phone className="h-4 w-4 text-gray-500" /> {ngo.contact}
-                </CardDescription>
-              </CardHeader>
+          {filteredNGOs.map((ngo) => {
+            const ngoNeeds = needs?.filter((need) => need.ngoId === ngo.id) || [];
 
-              <CardContent className="p-5 space-y-3">
-                <div className="flex items-start gap-2">
-                  <MapPin className="h-4 w-4 text-gray-500 mt-1" />
-                  <p className="text-sm text-gray-600 leading-snug">{ngo.address}</p>
-                </div>
+            return (
+              <Card
+                key={ngo.id}
+                className="border shadow-md hover:shadow-xl transition-shadow duration-300 rounded-2xl overflow-hidden"
+              >
+                <CardHeader className="bg-gray-50 border-b">
+                  <CardTitle className="flex justify-between items-center text-lg font-semibold">
+                    <span>{ngo.name}</span>
+                    <Badge variant="outline" className="text-xs px-2 py-1">
+                      {ngo.category}
+                    </Badge>
+                  </CardTitle>
+                  <CardDescription className="flex items-center gap-2 text-sm mt-1">
+                    <Phone className="h-4 w-4 text-gray-500" /> {ngo.contact}
+                  </CardDescription>
+                </CardHeader>
 
-                <div className="pt-2">
-                  <p className="text-sm font-medium text-gray-800 mb-2">Needs:</p>
-                  <div className="flex flex-wrap gap-2">
-                    {ngo.needs.map((need, i) => (
-                      <Badge key={i} variant="secondary" className="bg-green-50 text-green-700 border-green-200 text-xs px-3 py-1">
-                        {need}
-                      </Badge>
-                    ))}
+                <CardContent className="p-5 space-y-3">
+                  <div className="flex items-start gap-2">
+                    <MapPin className="h-4 w-4 text-gray-500 mt-1" />
+                    <p className="text-sm text-gray-600 leading-snug">{ngo.address}</p>
                   </div>
-                </div>
 
-                <div className="pt-4 flex justify-end gap-2">
-                  <Button onClick={() => handleDonateClick(ngo)} className="px-5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
-                    Donate
-                  </Button>
-                  <Button onClick={() => handleAboutClick(ngo)} variant="outline" className="px-5 rounded-lg">
-                    About Us
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  <NGOCardNeeds ngoNeeds={ngoNeeds} />
+
+                  <div className="pt-4 flex justify-end gap-2">
+                    <Button
+                      onClick={() => handleDonateClick(ngo)}
+                      className="px-5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
+                    >
+                      Donate
+                    </Button>
+                    <Button
+                      onClick={() => handleAboutClick(ngo)}
+                      variant="outline"
+                      className="px-5 rounded-lg"
+                    >
+                      About Us
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       </div>
     </div>

@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { useApp, Need } from '@/contexts/AppContext';
+import { useApp, type Need } from '@/contexts/AppContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -13,14 +15,18 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 const categories = ['Food', 'Clothing', 'Medical', 'Education', 'Shelter', 'Other'];
 
 export default function NeedsPage() {
+  const { user } = useAuth(); // NGO info
   const { needs, addNeed, updateNeed, deleteNeed } = useApp();
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingNeed, setEditingNeed] = useState<Need | null>(null);
+
   const [formData, setFormData] = useState({
     itemName: '',
     category: '',
     quantity: '',
     urgency: '',
+    description: '',
     expiryDate: '',
   });
 
@@ -30,6 +36,7 @@ export default function NeedsPage() {
       category: '',
       quantity: '',
       urgency: '',
+      description: '',
       expiryDate: '',
     });
     setEditingNeed(null);
@@ -37,23 +44,26 @@ export default function NeedsPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.itemName || !formData.category || !formData.quantity || !formData.urgency) {
+    if (!user) return;
+
+    const itemName = formData.itemName.trim();
+    const category = formData.category;
+    const quantity = parseInt(formData.quantity);
+    const urgency = formData.urgency as 'High' | 'Medium' | 'Low';
+    const description = formData.description.trim();
+    const expiryDate = formData.expiryDate || '';
+
+    if (!itemName || !category || !quantity || quantity <= 0 || !urgency) {
+      alert('Please fill in all required fields with valid values.');
       return;
     }
 
-    const needData = {
-      itemName: formData.itemName,
-      category: formData.category,
-      quantity: parseInt(formData.quantity),
-      urgency: formData.urgency as 'High' | 'Medium' | 'Low',
-      expiryDate: formData.expiryDate,
-    };
+    const needData = { itemName, category, quantity, urgency, description, expiryDate };
 
     if (editingNeed) {
       updateNeed(editingNeed.id, needData);
     } else {
-      addNeed(needData);
+      addNeed(user.id, needData);
     }
 
     resetForm();
@@ -67,7 +77,8 @@ export default function NeedsPage() {
       category: need.category,
       quantity: need.quantity.toString(),
       urgency: need.urgency,
-      expiryDate: need.expiryDate,
+      description: need.description || '',
+      expiryDate: need.expiryDate || '',
     });
     setIsDialogOpen(true);
   };
@@ -85,6 +96,8 @@ export default function NeedsPage() {
     }
   };
 
+  const ngoNeeds = user ? needs.filter(n => n.ngoId === user.id) : [];
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -92,7 +105,7 @@ export default function NeedsPage() {
           <h1 className="text-3xl font-bold text-foreground">Update Needs</h1>
           <p className="text-muted-foreground">Manage your organization's current needs</p>
         </div>
-        
+
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={resetForm}>
@@ -114,23 +127,19 @@ export default function NeedsPage() {
                   <Input
                     id="itemName"
                     value={formData.itemName}
-                    onChange={(e) => handleChange('itemName', e.target.value)}
+                    onChange={e => handleChange('itemName', e.target.value)}
                     placeholder="e.g., Rice Bags, Blankets"
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="category">Category</Label>
-                  <Select value={formData.category} onValueChange={(value) => handleChange('category', value)}>
+                  <Select value={formData.category} onValueChange={v => handleChange('category', v)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
-                      {categories.map((category) => (
-                        <SelectItem key={category} value={category}>
-                          {category}
-                        </SelectItem>
-                      ))}
+                      {categories.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -142,14 +151,14 @@ export default function NeedsPage() {
                     type="number"
                     min="1"
                     value={formData.quantity}
-                    onChange={(e) => handleChange('quantity', e.target.value)}
+                    onChange={e => handleChange('quantity', e.target.value)}
                     placeholder="Enter quantity needed"
                   />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="urgency">Urgency</Label>
-                  <Select value={formData.urgency} onValueChange={(value) => handleChange('urgency', value)}>
+                  <Select value={formData.urgency} onValueChange={v => handleChange('urgency', v)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select urgency level" />
                     </SelectTrigger>
@@ -162,19 +171,27 @@ export default function NeedsPage() {
                 </div>
 
                 <div className="space-y-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    value={formData.description}
+                    onChange={e => handleChange('description', e.target.value)}
+                    placeholder="Provide additional details about this need"
+                  />
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="expiryDate">Needed By (Optional)</Label>
                   <Input
                     id="expiryDate"
                     type="date"
                     value={formData.expiryDate}
-                    onChange={(e) => handleChange('expiryDate', e.target.value)}
+                    onChange={e => handleChange('expiryDate', e.target.value)}
                   />
                 </div>
               </div>
               <DialogFooter>
-                <Button type="submit">
-                  {editingNeed ? 'Update Need' : 'Add Need'}
-                </Button>
+                <Button type="submit">{editingNeed ? 'Update Need' : 'Add Need'}</Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -184,12 +201,10 @@ export default function NeedsPage() {
       <Card>
         <CardHeader>
           <CardTitle>Current Needs</CardTitle>
-          <CardDescription>
-            Items currently needed by your organization
-          </CardDescription>
+          <CardDescription>Items currently needed by your organization</CardDescription>
         </CardHeader>
         <CardContent>
-          {needs.length === 0 ? (
+          {ngoNeeds.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <Package className="mx-auto h-12 w-12 mb-4 opacity-50" />
               <p>No needs added yet. Click "Add Need" to get started.</p>
@@ -202,20 +217,22 @@ export default function NeedsPage() {
                   <TableHead>Category</TableHead>
                   <TableHead>Quantity</TableHead>
                   <TableHead>Urgency</TableHead>
+                  <TableHead>Description</TableHead>
                   <TableHead>Needed By</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {needs.map((need) => (
+                {ngoNeeds.map(need => (
                   <TableRow key={need.id}>
                     <TableCell className="font-medium">{need.itemName}</TableCell>
                     <TableCell>{need.category}</TableCell>
                     <TableCell>{need.quantity}</TableCell>
                     <TableCell>
-                      <Badge variant={getUrgencyVariant(need.urgency)}>
-                        {need.urgency}
-                      </Badge>
+                      <Badge variant={getUrgencyVariant(need.urgency)}>{need.urgency}</Badge>
+                    </TableCell>
+                    <TableCell className="max-w-xs truncate">
+                      {need.description || <span className="text-muted-foreground">No description</span>}
                     </TableCell>
                     <TableCell>
                       {need.expiryDate ? (
@@ -229,18 +246,10 @@ export default function NeedsPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEdit(need)}
-                        >
+                        <Button variant="outline" size="sm" onClick={() => handleEdit(need)}>
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => deleteNeed(need.id)}
-                        >
+                        <Button variant="outline" size="sm" onClick={() => deleteNeed(need.id)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
