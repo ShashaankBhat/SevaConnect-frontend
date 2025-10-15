@@ -14,14 +14,14 @@ export function MyDonationsPage() {
         return 'secondary';
       case 'Confirmed':
         return 'default';
-      case 'Delivered':
+      case 'Received':
         return 'outline';
       default:
         return 'secondary';
     }
   };
 
-  const handleStatusUpdate = (donationId: string, newStatus: 'Confirmed' | 'Delivered') => {
+  const handleStatusUpdate = (donationId: string, newStatus: 'Confirmed' | 'Received') => {
     updateDonationStatus(donationId, newStatus);
     toast({
       title: "Status Updated",
@@ -77,9 +77,9 @@ export function MyDonationsPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Delivered</CardDescription>
+            <CardDescription>Received</CardDescription>
             <CardTitle className="text-2xl">
-              {donations.filter(d => d.status === 'Delivered').length}
+              {donations.filter(d => d.status === 'Received').length}
             </CardTitle>
           </CardHeader>
         </Card>
@@ -134,9 +134,9 @@ export function MyDonationsPage() {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => handleStatusUpdate(donation.id, 'Delivered')}
+                          onClick={() => handleStatusUpdate(donation.id, 'Received')}
                         >
-                          Mark Delivered
+                          Mark Received
                         </Button>
                       )}
                     </div>

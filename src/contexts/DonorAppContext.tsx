@@ -6,7 +6,11 @@ export interface NGO {
   address: string;
   lat: number;
   lng: number;
-  needs: string[];
+  needs: {
+    title: string;
+    description: string;
+    quantity: number;
+  }[]; // ✅ changed from string[] to object[]
   contact: string;
   category: string;
   status: string;
@@ -68,7 +72,16 @@ export function DonorAppProvider({ children }: { children: React.ReactNode }) {
           address: ngo.address,
           lat: 19.076 + 0.001 * index,
           lng: 72.8777 + 0.001 * index,
-          needs: ngo.documents?.needs || [],
+          // ✅ Normalize needs: convert string[] or undefined → object[]
+          needs: (ngo.documents?.needs || []).map((n: any) =>
+            typeof n === "string"
+              ? { title: n, description: n, quantity: 1 }
+              : {
+                  title: n.title || "Need",
+                  description: n.description || "",
+                  quantity: n.quantity || 1,
+                }
+          ),
           contact: ngo.contact,
           category: ngo.category,
           status: ngo.status,

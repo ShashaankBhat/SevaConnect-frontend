@@ -15,23 +15,28 @@ const LIBRARIES: ("places")[] = ["places"];
 interface DonationFormProps {
   ngo: NGO;
   onBack: () => void;
-  onSubmit: (item: string, quantity: number, notes: string) => void;
+  onSubmit: (item: string, quantity: number, notes: string, donorName: string) => void;
 }
 
 function DonationForm({ ngo, onBack, onSubmit }: DonationFormProps) {
   const [item, setItem] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState("");
+  const [donorName, setDonorName] = useState("");
+  const [isAnonymous, setIsAnonymous] = useState(false);
 
   const handleSubmit = () => {
     if (!item || quantity <= 0) {
       alert("Please enter valid item and quantity");
       return;
     }
-    onSubmit(item, quantity, notes);
+    const finalDonorName = isAnonymous ? "Anonymous Donor" : donorName || "Unnamed Donor";
+    onSubmit(item, quantity, notes, finalDonorName);
     setItem("");
     setQuantity(1);
     setNotes("");
+    setDonorName("");
+    setIsAnonymous(false);
   };
 
   return (
@@ -67,6 +72,26 @@ function DonationForm({ ngo, onBack, onSubmit }: DonationFormProps) {
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
         />
+      </div>
+
+      <div className="space-y-2">
+        <label className="block text-sm font-medium">Donor Name</label>
+        <input
+          type="text"
+          className="w-full border p-2 rounded"
+          value={donorName}
+          onChange={(e) => setDonorName(e.target.value)}
+          disabled={isAnonymous}
+          placeholder="Enter your name"
+        />
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={isAnonymous}
+            onChange={(e) => setIsAnonymous(e.target.checked)}
+          />
+          <label className="text-sm">Donate Anonymously</label>
+        </div>
       </div>
 
       <div className="flex gap-2">
@@ -208,10 +233,10 @@ export function BrowseNGOsPage() {
     navigate(`/donor/dashboard/ngo/${ngo.id}/about`);
   };
 
-  const handleDonationSubmit = (item: string, quantity: number, notes: string) => {
+  const handleDonationSubmit = (item: string, quantity: number, notes: string, donorName: string) => {
     if (!selectedNGO) return;
     addDonation({
-      donorName: "Anonymous Donor",
+      donorName,
       ngoId: selectedNGO.id,
       ngoName: selectedNGO.name,
       item,

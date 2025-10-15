@@ -5,12 +5,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AddInventoryForm } from '@/components/inventory/AddInventoryForm';
-import { Warehouse, AlertTriangle, Calendar, Package, Plus, Edit, Trash2 } from 'lucide-react';
+import { Warehouse, AlertTriangle, Calendar, Package, Plus, Edit, Trash2, Minus } from 'lucide-react';
 
 export default function InventoryPage() {
-  const { inventory, deleteInventoryItem } = useApp();
+  const { inventory, deleteInventoryItem, updateInventoryItem } = useApp();
   const [showAddForm, setShowAddForm] = useState(false);
-  const [editItem, setEditItem] = useState(null);
+  const [editItem, setEditItem] = useState<any>(null);
 
   const isLowStock = (quantity: number) => quantity < 5;
   
@@ -31,7 +31,8 @@ export default function InventoryPage() {
   const expiringSoonItems = inventory.filter(item => isExpiringSoon(item.expiryDate));
 
   const handleEdit = (item: any) => {
-    setEditItem(item);
+    const { category, expiryDate, ...rest } = item;
+    setEditItem(rest);
     setShowAddForm(true);
   };
 
@@ -39,6 +40,16 @@ export default function InventoryPage() {
     if (confirm('Are you sure you want to delete this item?')) {
       deleteInventoryItem(itemId);
     }
+  };
+
+  const handleUseItem = (item: any) => {
+    const amount = parseInt(prompt(`Enter quantity to use (available: ${item.quantity})`) || '0', 10);
+    if (isNaN(amount) || amount <= 0) return alert('Invalid quantity');
+    if (amount > item.quantity) return alert('Not enough stock');
+    
+    const updatedQuantity = item.quantity - amount;
+    updateInventoryItem(item.id, { ...item, quantity: updatedQuantity });
+    alert(`Used ${amount} units of ${item.name}. Remaining: ${updatedQuantity}`);
   };
 
   const handleFormClose = () => {
@@ -107,56 +118,6 @@ export default function InventoryPage() {
         </Card>
       </div>
 
-      {(lowStockItems.length > 0 || expiringSoonItems.length > 0) && (
-        <div className="grid gap-6 md:grid-cols-2">
-          {lowStockItems.length > 0 && (
-            <Card className="border-destructive/50">
-              <CardHeader>
-                <CardTitle className="flex items-center text-destructive">
-                  <AlertTriangle className="mr-2 h-5 w-5" />
-                  Low Stock Alert
-                </CardTitle>
-                <CardDescription>Items that need immediate attention</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {lowStockItems.map((item) => (
-                    <div key={item.id} className="flex justify-between items-center p-2 bg-destructive/10 rounded">
-                      <span className="font-medium">{item.name}</span>
-                      <Badge variant="destructive">{item.quantity} left</Badge>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {expiringSoonItems.length > 0 && (
-            <Card className="border-warning/50">
-              <CardHeader>
-                <CardTitle className="flex items-center text-warning">
-                  <Calendar className="mr-2 h-5 w-5" />
-                  Expiring Soon
-                </CardTitle>
-                <CardDescription>Items expiring within 7 days</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {expiringSoonItems.map((item) => (
-                    <div key={item.id} className="flex justify-between items-center p-2 bg-warning/10 rounded">
-                      <span className="font-medium">{item.name}</span>
-                      <Badge variant="outline" className="text-warning">
-                        {item.expiryDate && new Date(item.expiryDate).toLocaleDateString()}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      )}
-
       <Card>
         <CardHeader>
           <CardTitle>Current Inventory</CardTitle>
@@ -221,6 +182,17 @@ export default function InventoryPage() {
                       </TableCell>
                       <TableCell>
                         {new Date(item.addedAt).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="text-right flex justify-end gap-2">
+                        <Button size="sm" variant="outline" onClick={() => handleUseItem(item)}>
+                          <Minus className="h-4 w-4 mr-1" /> Use
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => handleEdit(item)}>
+                          <Edit className="h-4 w-4 mr-1" /> Edit
+                        </Button>
+                        <Button size="sm" variant="destructive" onClick={() => handleDelete(item.id)}>
+                          <Trash2 className="h-4 w-4 mr-1" /> Delete
+                        </Button>
                       </TableCell>
                     </TableRow>
                   );
