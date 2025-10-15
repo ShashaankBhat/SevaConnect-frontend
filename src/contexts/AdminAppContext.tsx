@@ -14,8 +14,27 @@ interface NGOUser {
   rejectionReason?: string;
 }
 
+interface Donor {
+  id: string;
+  name: string;
+  email: string;
+  isVerified: boolean;
+  registeredAt: string;
+}
+
+interface Donation {
+  id: string;
+  amount: number;
+  ngoId: string;
+  donorId: string;
+  status: 'completed' | 'pending' | 'failed';
+  createdAt: string;
+}
+
 interface AdminAppContextType {
   ngoRegistrations: NGOUser[];
+  donors: Donor[];
+  donations: Donation[];
   verifyNGO: (id: string) => void;
   rejectNGO: (id: string, reason?: string) => void;
   refreshData: () => void;
@@ -25,44 +44,62 @@ const AdminAppContext = createContext<AdminAppContextType | undefined>(undefined
 
 export function AdminAppProvider({ children }: { children: React.ReactNode }) {
   const [ngoRegistrations, setNgoRegistrations] = useState<NGOUser[]>([]);
+  const [donors, setDonors] = useState<Donor[]>([]);
+  const [donations, setDonations] = useState<Donation[]>([]);
 
   const loadNGOData = () => {
     try {
-      // Load from sevaconnect_ngos (where registrations are stored)
       const ngoData = JSON.parse(localStorage.getItem('sevaconnect_ngos') || '[]');
-      console.log('Loaded NGO data:', ngoData);
-      
-      if (ngoData.length > 0) {
-        // Convert to NGOUser format (remove password field)
-        const registrations: NGOUser[] = ngoData.map((ngo: any) => {
-          const { password, ...ngoUser } = ngo;
-          return ngoUser;
-        });
-        setNgoRegistrations(registrations);
-      } else {
-        // If no NGO data, set empty array
-        setNgoRegistrations([]);
-      }
+      const registrations: NGOUser[] = ngoData.map((ngo: any) => {
+        const { password, ...ngoUser } = ngo;
+        return ngoUser;
+      });
+      setNgoRegistrations(registrations);
     } catch (error) {
       console.error('Error loading NGO data:', error);
       setNgoRegistrations([]);
     }
   };
 
+  const loadDonorData = () => {
+    try {
+      const donorData = JSON.parse(localStorage.getItem('sevaconnect_donors') || '[]');
+      setDonors(donorData);
+    } catch (error) {
+      console.error('Error loading donor data:', error);
+      setDonors([]);
+    }
+  };
+
+  const loadDonationData = () => {
+    try {
+      const donationData = JSON.parse(localStorage.getItem('sevaconnect_donations') || '[]');
+      setDonations(donationData);
+    } catch (error) {
+      console.error('Error loading donation data:', error);
+      setDonations([]);
+    }
+  };
+
   useEffect(() => {
     loadNGOData();
-    
-    // Listen for storage changes to update in real-time
+    loadDonorData();
+    loadDonationData();
+
     const handleStorageChange = () => {
-      console.log('Storage changed, reloading data...');
       loadNGOData();
+      loadDonorData();
+      loadDonationData();
     };
-    
+
     window.addEventListener('storage', handleStorageChange);
-    
-    // Also check every 2 seconds for changes (for same-tab updates)
-    const interval = setInterval(loadNGOData, 2000);
-    
+
+    const interval = setInterval(() => {
+      loadNGOData();
+      loadDonorData();
+      loadDonationData();
+    }, 2000);
+
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       clearInterval(interval);
@@ -70,22 +107,17 @@ export function AdminAppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const verifyNGO = (id: string) => {
-    console.log('Verifying NGO:', id);
-    
-    // Update in ngoRegistrations state
     const updatedRegistrations = ngoRegistrations.map(ngo =>
       ngo.id === id ? { ...ngo, status: 'Verified' as const } : ngo
     );
     setNgoRegistrations(updatedRegistrations);
-    
-    // Also update in the main NGOs storage
+
     const allNGOs = JSON.parse(localStorage.getItem('sevaconnect_ngos') || '[]');
     const updatedNGOs = allNGOs.map((ngo: any) =>
       ngo.id === id ? { ...ngo, status: 'Verified' } : ngo
     );
     localStorage.setItem('sevaconnect_ngos', JSON.stringify(updatedNGOs));
-    
-    // Update user data if the NGO is currently logged in
+
     const currentUser = JSON.parse(localStorage.getItem('sevaconnect_user') || 'null');
     if (currentUser && currentUser.id === id) {
       localStorage.setItem('sevaconnect_user', JSON.stringify({
@@ -93,27 +125,20 @@ export function AdminAppProvider({ children }: { children: React.ReactNode }) {
         status: 'Verified'
       }));
     }
-    
-    console.log('NGO verified successfully');
   };
 
   const rejectNGO = (id: string, reason?: string) => {
-    console.log('Rejecting NGO:', id, reason);
-    
-    // Update in ngoRegistrations state
     const updatedRegistrations = ngoRegistrations.map(ngo =>
       ngo.id === id ? { ...ngo, status: 'Rejected' as const, rejectionReason: reason } : ngo
     );
     setNgoRegistrations(updatedRegistrations);
-    
-    // Also update in the main NGOs storage
+
     const allNGOs = JSON.parse(localStorage.getItem('sevaconnect_ngos') || '[]');
     const updatedNGOs = allNGOs.map((ngo: any) =>
       ngo.id === id ? { ...ngo, status: 'Rejected', rejectionReason: reason } : ngo
     );
     localStorage.setItem('sevaconnect_ngos', JSON.stringify(updatedNGOs));
-    
-    // Update user data if the NGO is currently logged in
+
     const currentUser = JSON.parse(localStorage.getItem('sevaconnect_user') || 'null');
     if (currentUser && currentUser.id === id) {
       localStorage.setItem('sevaconnect_user', JSON.stringify({
@@ -122,24 +147,23 @@ export function AdminAppProvider({ children }: { children: React.ReactNode }) {
         rejectionReason: reason
       }));
     }
-    
-    console.log('NGO rejected successfully');
   };
 
   const refreshData = () => {
-    console.log('Manual refresh triggered');
     loadNGOData();
-  };
-
-  const contextValue: AdminAppContextType = {
-    ngoRegistrations,
-    verifyNGO,
-    rejectNGO,
-    refreshData
+    loadDonorData();
+    loadDonationData();
   };
 
   return (
-    <AdminAppContext.Provider value={contextValue}>
+    <AdminAppContext.Provider value={{
+      ngoRegistrations,
+      donors,
+      donations,
+      verifyNGO,
+      rejectNGO,
+      refreshData
+    }}>
       {children}
     </AdminAppContext.Provider>
   );
@@ -147,8 +171,6 @@ export function AdminAppProvider({ children }: { children: React.ReactNode }) {
 
 export function useAdminApp() {
   const context = useContext(AdminAppContext);
-  if (context === undefined) {
-    throw new Error('useAdminApp must be used within an AdminAppProvider');
-  }
+  if (!context) throw new Error('useAdminApp must be used within an AdminAppProvider');
   return context;
 }

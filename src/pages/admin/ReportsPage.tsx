@@ -50,6 +50,13 @@ export default function ReportsPage() {
   const [categoryData, setCategoryData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [summaryStats, setSummaryStats] = useState({
+    totalDonations: 0,
+    activeDonors: 0,
+    activeNGOs: 0,
+    uniqueDonatingDonors: 0,
+    donationRate: 0
+  });
 
   useEffect(() => {
     fetchReportsData();
@@ -76,6 +83,16 @@ export default function ReportsPage() {
       setVolunteersData(processVolunteersByMonth(volunteerRequests));
       setNgoStatusData(processNGOStatus(ngos));
       setCategoryData(processCategoryData(ngos, donations));
+
+      // Update summary stats reactively
+      const completedDonations = donations.filter(d => d.status === 'completed');
+      const uniqueDonatingDonors = new Set(completedDonations.map(d => d.donorId)).size;
+      const activeDonors = donors.filter(d => d.isVerified).length;
+      const activeNGOs = ngos.filter(n => n.status === 'Verified').length;
+      const totalDonations = completedDonations.length;
+      const donationRate = activeDonors > 0 ? Math.round((uniqueDonatingDonors / activeDonors) * 100) : 0;
+
+      setSummaryStats({ totalDonations, activeDonors, activeNGOs, uniqueDonatingDonors, donationRate });
 
       setLastUpdated(new Date());
     } catch (error) {
@@ -172,21 +189,6 @@ export default function ReportsPage() {
     return result;
   };
 
-  const calculateSummaryStats = () => {
-    const donations: Donation[] = JSON.parse(localStorage.getItem('sevaconnect_donations') || '[]');
-    const ngos: NGO[] = JSON.parse(localStorage.getItem('sevaconnect_ngos') || '[]');
-    const donors: Donor[] = JSON.parse(localStorage.getItem('sevaconnect_donors') || '[]');
-
-    const totalDonations = donations.filter(d => d.status === 'completed').length;
-    const activeDonors = donors.filter(d => d.isVerified).length;
-    const activeNGOs = ngos.filter(n => n.status === 'Verified').length;
-    const uniqueDonatingDonors = new Set(donations.filter(d => d.status === 'completed').map(d => d.donorId)).size;
-
-    return { totalDonations, activeDonors, activeNGOs, uniqueDonatingDonors };
-  };
-
-  const summaryStats = calculateSummaryStats();
-
   const exportToCSV = () => toast({ title: 'Exporting CSV', description: 'Feature coming soon!' });
   const exportToPDF = () => toast({ title: 'Exporting PDF', description: 'Feature coming soon!' });
 
@@ -271,12 +273,7 @@ export default function ReportsPage() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {summaryStats.activeDonors > 0 
-                ? Math.round((summaryStats.uniqueDonatingDonors / summaryStats.activeDonors) * 100) 
-                : 0
-              }%
-            </div>
+            <div className="text-2xl font-bold">{summaryStats.donationRate}%</div>
             <p className="text-xs text-muted-foreground">Of donors made donations</p>
           </CardContent>
         </Card>

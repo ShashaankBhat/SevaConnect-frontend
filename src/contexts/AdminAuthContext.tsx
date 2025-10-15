@@ -16,7 +16,6 @@ interface AdminAuthContextType {
 
 const AdminAuthContext = createContext<AdminAuthContextType | undefined>(undefined);
 
-// Demo admin credentials
 const DEMO_ADMIN = {
   email: 'admin@sevaconnect.com',
   password: 'admin123',
@@ -33,21 +32,15 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check if admin is logged in from localStorage
     const savedAdmin = localStorage.getItem('sevaconnect_admin');
-    if (savedAdmin) {
-      setAdmin(JSON.parse(savedAdmin));
-    }
+    if (savedAdmin) setAdmin(JSON.parse(savedAdmin));
     setIsLoading(false);
   }, []);
 
-  const login = async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+  const login = async (email: string, password: string) => {
     setIsLoading(true);
-    
-    // Simulate API call delay
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    // Check demo credentials
     if (email === DEMO_ADMIN.email && password === DEMO_ADMIN.password) {
       const adminData = DEMO_ADMIN.admin;
       setAdmin(adminData);
@@ -58,10 +51,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     setIsLoading(false);
-    return { 
-      success: false, 
-      error: 'Invalid email or password. Use admin@sevaconnect.com / admin123' 
-    };
+    return { success: false, error: 'Invalid email or password. Use admin@sevaconnect.com / admin123' };
   };
 
   const logout = async () => {
@@ -79,8 +69,6 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAdminAuth() {
   const context = useContext(AdminAuthContext);
-  if (context === undefined) {
-    throw new Error('useAdminAuth must be used within an AdminAuthProvider');
-  }
+  if (!context) throw new Error('useAdminAuth must be used within an AdminAuthProvider');
   return context;
 }
